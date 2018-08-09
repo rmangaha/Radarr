@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Data.SQLite;
-using System.IO;
 using Marr.Data;
 using Marr.Data.Reflection;
 using NLog;
@@ -111,10 +110,10 @@ namespace NzbDrone.Core.Datastore
                 {
                     if (OsInfo.IsOsx)
                     {
-                        throw new CorruptDatabaseException("Database file: {0} is corrupt, restore from backup if available. See: https://github.com/Sonarr/Sonarr/wiki/FAQ#i-use-sonarr-on-a-mac-and-it-suddenly-stopped-working-what-happened", ex, fileName);
+                        throw new CorruptDatabaseException("Database file: {0} is corrupt, restore from backup if available. See: https://github.com/Radarr/Radarr/wiki/FAQ#i-use-radarr-on-a-mac-and-it-suddenly-stopped-working-what-happened", ex, fileName);
                     }
 
-                    throw new CorruptDatabaseException("Database file: {0} is corrupt, restore from backup if available. See: https://github.com/Sonarr/Sonarr/wiki/FAQ#i-am-getting-an-error-database-disk-image-is-malformed", ex, fileName);
+                    throw new CorruptDatabaseException("Database file: {0} is corrupt, restore from backup if available. See: https://github.com/Radarr/Radarr/wiki/FAQ#i-am-getting-an-error-database-disk-image-is-malformed", ex, fileName);
                 }
             }
 

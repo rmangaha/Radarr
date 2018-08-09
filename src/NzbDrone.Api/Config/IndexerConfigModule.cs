@@ -1,4 +1,3 @@
-﻿using System;
 using FluentValidation;
 using NzbDrone.Api.Validation;
 using NzbDrone.Core.Configuration;
@@ -12,6 +11,9 @@ namespace NzbDrone.Api.Config
             : base(configService)
         {
             SharedValidator.RuleFor(c => c.MinimumAge)
+                           .GreaterThanOrEqualTo(0);
+
+            SharedValidator.RuleFor(c => c.MaximumSize)
                            .GreaterThanOrEqualTo(0);
 
             SharedValidator.RuleFor(c => c.Retention)

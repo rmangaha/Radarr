@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -35,8 +35,8 @@ namespace NzbDrone.Common.Processes
     {
         private readonly Logger _logger;
 
-        public const string NZB_DRONE_PROCESS_NAME = "NzbDrone";
-        public const string NZB_DRONE_CONSOLE_PROCESS_NAME = "NzbDrone.Console";
+        public const string NZB_DRONE_PROCESS_NAME = "Radarr";
+        public const string NZB_DRONE_CONSOLE_PROCESS_NAME = "Radarr.Console";
 
         public ProcessProvider(Logger logger)
         {
@@ -98,9 +98,9 @@ namespace NzbDrone.Common.Processes
             var process = new Process
             {
                 StartInfo = new ProcessStartInfo(url)
-                    {
-                        UseShellExecute = true
-                    }
+                {
+                    UseShellExecute = true
+                }
             };
 
             process.Start();
@@ -129,16 +129,34 @@ namespace NzbDrone.Common.Processes
             {
                 foreach (DictionaryEntry environmentVariable in environmentVariables)
                 {
-                    startInfo.EnvironmentVariables.Add(environmentVariable.Key.ToString(), environmentVariable.Value.ToString());
+                    try
+                    {
+                        _logger.Trace("Setting environment variable '{0}' to '{1}'", environmentVariable.Key, environmentVariable.Value);
+                        startInfo.EnvironmentVariables.Add(environmentVariable.Key.ToString(), environmentVariable.Value.ToString());
+                    }
+                    catch (Exception e)
+                    {
+                        if (environmentVariable.Value == null)
+                        {
+                            _logger.Error(e, "Unable to set environment variable '{0}', value is null", environmentVariable.Key);
+                        }
+
+                        else
+                        {
+                            _logger.Error(e, "Unable to set environment variable '{0}'", environmentVariable.Key);
+                        }
+
+                        throw;
+                    }
                 }
             }
 
             logger.Debug("Starting {0} {1}", path, args);
 
             var process = new Process
-                {
-                    StartInfo = startInfo
-                };
+            {
+                StartInfo = startInfo
+            };
 
             process.OutputDataReceived += (sender, eventArgs) =>
             {
@@ -315,6 +333,7 @@ namespace NzbDrone.Common.Processes
 
             var monoProcesses = Process.GetProcessesByName("mono")
                                        .Union(Process.GetProcessesByName("mono-sgen"))
+                                       .Union(Process.GetProcessesByName("mono-sgen32"))
                                        .Where(process =>
                                               process.Modules.Cast<ProcessModule>()
                                                      .Any(module =>

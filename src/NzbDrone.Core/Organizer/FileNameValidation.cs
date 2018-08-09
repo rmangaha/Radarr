@@ -1,5 +1,4 @@
-﻿using System;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using FluentValidation;
 using FluentValidation.Validators;
 
@@ -34,13 +33,25 @@ namespace NzbDrone.Core.Organizer
         public static IRuleBuilderOptions<T, string> ValidSeriesFolderFormat<T>(this IRuleBuilder<T, string> ruleBuilder)
         {
             ruleBuilder.SetValidator(new NotEmptyValidator(null));
-            return ruleBuilder.SetValidator(new RegularExpressionValidator(FileNameBuilder.SeriesTitleRegex)).WithMessage("Must contain series title");
+            return ruleBuilder.SetValidator(new RegularExpressionValidator(FileNameBuilder.SeriesTitleRegex)).WithMessage("Must contain movie title");
         }
 
         public static IRuleBuilderOptions<T, string> ValidSeasonFolderFormat<T>(this IRuleBuilder<T, string> ruleBuilder)
         {
             ruleBuilder.SetValidator(new NotEmptyValidator(null));
             return ruleBuilder.SetValidator(new RegularExpressionValidator(SeasonFolderRegex)).WithMessage("Must contain season number");
+        }
+
+        public static IRuleBuilderOptions<T, string> ValidMovieFolderFormat<T>(this IRuleBuilder<T, string> ruleBuilder)
+        {
+            ruleBuilder.SetValidator(new NotEmptyValidator(null));
+            return ruleBuilder.SetValidator(new RegularExpressionValidator(FileNameBuilder.MovieTitleRegex)).WithMessage("Must contain movie title");
+        }
+
+        public static IRuleBuilderOptions<T, string> ValidMovieFormat<T>(this IRuleBuilder<T, string> ruleBuilder)
+        {
+            ruleBuilder.SetValidator(new NotEmptyValidator(null));
+            return ruleBuilder.SetValidator(new RegularExpressionValidator(FileNameBuilder.MovieTitleRegex)).WithMessage("Must contain movie title");
         }
     }
 
@@ -55,6 +66,8 @@ namespace NzbDrone.Core.Organizer
         protected override bool IsValid(PropertyValidatorContext context)
         {
             var value = context.PropertyValue as string;
+
+            return true;
 
             if (!FileNameBuilder.SeasonEpisodePatternRegex.IsMatch(value) &&
                 !FileNameValidation.OriginalTokenRegex.IsMatch(value))
@@ -78,6 +91,8 @@ namespace NzbDrone.Core.Organizer
         {
             var value = context.PropertyValue as string;
 
+            return true;
+
             if (!FileNameBuilder.SeasonEpisodePatternRegex.IsMatch(value) &&
                 !FileNameBuilder.AirDateRegex.IsMatch(value) &&
                 !FileNameValidation.OriginalTokenRegex.IsMatch(value))
@@ -100,6 +115,8 @@ namespace NzbDrone.Core.Organizer
         protected override bool IsValid(PropertyValidatorContext context)
         {
             var value = context.PropertyValue as string;
+
+            return true;
 
             if (!FileNameBuilder.SeasonEpisodePatternRegex.IsMatch(value) &&
                 !FileNameBuilder.AbsoluteEpisodePatternRegex.IsMatch(value) &&

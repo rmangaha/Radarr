@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NLog;
@@ -33,21 +33,27 @@ namespace NzbDrone.Core.Download
         public ProcessedDecisions ProcessDecisions(List<DownloadDecision> decisions)
         {
             var qualifiedReports = GetQualifiedReports(decisions);
-            var prioritizedDecisions = _prioritizeDownloadDecision.PrioritizeDecisions(qualifiedReports);
+            var prioritizedDecisions = _prioritizeDownloadDecision.PrioritizeDecisionsForMovies(qualifiedReports);
             var grabbed = new List<DownloadDecision>();
             var pending = new List<DownloadDecision>();
 
             foreach (var report in prioritizedDecisions)
             {
-                var remoteEpisode = report.RemoteEpisode;
+                var remoteMovie = report.RemoteMovie;
 
-                var episodeIds = remoteEpisode.Episodes.Select(e => e.Id).ToList();
+                if (remoteMovie == null || remoteMovie.Movie == null)
+                {
+                    continue;
+                }
+
+                List<int> movieIds = new List<int> { remoteMovie.Movie.Id };
+
 
                 //Skip if already grabbed
-                if (grabbed.SelectMany(r => r.RemoteEpisode.Episodes)
+                if (grabbed.Select(r => r.RemoteMovie.Movie)
                                 .Select(e => e.Id)
                                 .ToList()
-                                .Intersect(episodeIds)
+                                .Intersect(movieIds)
                                 .Any())
                 {
                     continue;
@@ -60,10 +66,18 @@ namespace NzbDrone.Core.Download
                     continue;
                 }
 
-                if (pending.SelectMany(r => r.RemoteEpisode.Episodes)
+                if (report.Rejections.Any())
+                {
+                    _logger.Debug("Rejecting release {0} because {1}", report.ToString(), report.Rejections.First().Reason);
+                    continue;
+                }
+
+
+
+                if (pending.Select(r => r.RemoteMovie.Movie)
                         .Select(e => e.Id)
                         .ToList()
-                        .Intersect(episodeIds)
+                        .Intersect(movieIds)
                         .Any())
                 {
                     continue;
@@ -71,15 +85,16 @@ namespace NzbDrone.Core.Download
 
                 try
                 {
-                    _downloadService.DownloadReport(remoteEpisode);
+                    _downloadService.DownloadReport(remoteMovie, false);
                     grabbed.Add(report);
                 }
                 catch (Exception e)
                 {
                     //TODO: support for store & forward
                     //We'll need to differentiate between a download client error and an indexer error
-                    _logger.Warn(e, "Couldn't add report to download queue. " + remoteEpisode);
+                    _logger.Warn(e, "Couldn't add report to download queue. " + remoteMovie);
                 }
+
             }
 
             return new ProcessedDecisions(grabbed, pending, decisions.Where(d => d.Rejected).ToList());
@@ -88,7 +103,7 @@ namespace NzbDrone.Core.Download
         internal List<DownloadDecision> GetQualifiedReports(IEnumerable<DownloadDecision> decisions)
         {
             //Process both approved and temporarily rejected
-            return decisions.Where(c => (c.Approved || c.TemporarilyRejected) && c.RemoteEpisode.Episodes.Any()).ToList();
+            return decisions.Where(c => (c.Approved || c.TemporarilyRejected) && (c.RemoteMovie.Movie != null)).ToList();
         }
     }
 }

@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
-using System.Text;
 using NLog;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.EnvironmentInfo;
@@ -46,46 +45,35 @@ namespace NzbDrone.Common.Http
 
         public HttpResponse Execute(HttpRequest request)
         {
-            foreach (var interceptor in _requestInterceptors)
+            var cookieContainer = InitializeRequestCookies(request);
+
+            var response = ExecuteRequest(request, cookieContainer);
+
+            if (request.AllowAutoRedirect && response.HasHttpRedirect)
             {
-                request = interceptor.PreRequest(request);
+                var autoRedirectChain = new List<string>();
+                autoRedirectChain.Add(request.Url.ToString());
+
+                do
+                {
+                    request.Url += new HttpUri(response.Headers.GetSingleValue("Location"));
+                    autoRedirectChain.Add(request.Url.ToString());
+
+                    _logger.Trace("Redirected to {0}", request.Url);
+
+                    if (autoRedirectChain.Count > 3)
+                    {
+                        throw new WebException($"Too many automatic redirections were attempted for {string.Join(" -> ", autoRedirectChain)}", WebExceptionStatus.ProtocolError);
+                    }
+
+                    response = ExecuteRequest(request, cookieContainer);
+                }
+                while (response.HasHttpRedirect);
             }
 
-            if (request.RateLimit != TimeSpan.Zero)
+            if (response.HasHttpRedirect && !RuntimeInfoBase.IsProduction)
             {
-                _rateLimitService.WaitAndPulse(request.Url.Host, request.RateLimit);
-            }
-
-            _logger.Trace(request);
-
-            var stopWatch = Stopwatch.StartNew();
-
-            var cookies = PrepareRequestCookies(request);
-
-            var response = _httpDispatcher.GetResponse(request, cookies);
-
-            HandleResponseCookies(request, cookies);
-
-            stopWatch.Stop();
-
-            _logger.Trace("{0} ({1} ms)", response, stopWatch.ElapsedMilliseconds);
-
-            foreach (var interceptor in _requestInterceptors)
-            {
-                response = interceptor.PostResponse(response);
-            }
-
-            if (request.LogResponseContent)
-            {
-                _logger.Trace("Response content ({0} bytes): {1}", response.ResponseData.Length, response.Content);
-            }
-
-            if (!RuntimeInfoBase.IsProduction &&
-                (response.StatusCode == HttpStatusCode.Moved ||
-                 response.StatusCode == HttpStatusCode.MovedPermanently ||
-                 response.StatusCode == HttpStatusCode.Found))
-            {
-                _logger.Error("Server requested a redirect to [" + response.Headers["Location"] + "]. Update the request URL to avoid this redirect.");
+                _logger.Error("Server requested a redirect to [{0}] while in developer mode. Update the request URL to avoid this redirect.", response.Headers["Location"]);
             }
 
             if (!request.SuppressHttpError && response.HasHttpError)
@@ -105,49 +93,123 @@ namespace NzbDrone.Common.Http
             return response;
         }
 
-        private CookieContainer PrepareRequestCookies(HttpRequest request)
+        private HttpResponse ExecuteRequest(HttpRequest request, CookieContainer cookieContainer)
+        {
+            foreach (var interceptor in _requestInterceptors)
+            {
+                request = interceptor.PreRequest(request);
+            }
+
+            if (request.RateLimit != TimeSpan.Zero)
+            {
+                _rateLimitService.WaitAndPulse(request.Url.Host, request.RateLimit);
+            }
+
+            _logger.Trace(request);
+
+            var stopWatch = Stopwatch.StartNew();
+
+            PrepareRequestCookies(request, cookieContainer);
+
+            var response = _httpDispatcher.GetResponse(request, cookieContainer);
+
+            HandleResponseCookies(response, cookieContainer);
+
+            stopWatch.Stop();
+
+            _logger.Trace("{0} ({1} ms)", response, stopWatch.ElapsedMilliseconds);
+
+            foreach (var interceptor in _requestInterceptors)
+            {
+                response = interceptor.PostResponse(response);
+            }
+
+            if (request.LogResponseContent)
+            {
+                _logger.Trace("Response content ({0} bytes): {1}", response.ResponseData.Length, response.Content);
+            }
+
+            return response;
+        }
+
+        private CookieContainer InitializeRequestCookies(HttpRequest request)
         {
             lock (_cookieContainerCache)
             {
-                var persistentCookieContainer = _cookieContainerCache.Get("container", () => new CookieContainer());
+                var sourceContainer = new CookieContainer();
+
+                var presistentContainer = _cookieContainerCache.Get("container", () => new CookieContainer());
+
+                if (!request.IgnorePersistentCookies)
+                {
+                    var persistentCookies = presistentContainer.GetCookies((Uri)request.Url);
+                    sourceContainer.Add(persistentCookies);   
+                }
 
                 if (request.Cookies.Count != 0)
                 {
                     foreach (var pair in request.Cookies)
                     {
-                        persistentCookieContainer.Add(new Cookie(pair.Key, pair.Value, "/", request.Url.Host)
+                        var cookie = new Cookie(pair.Key, pair.Value, "/")
                         {
                             // Use Now rather than UtcNow to work around Mono cookie expiry bug.
                             // See https://gist.github.com/ta264/7822b1424f72e5b4c961
                             Expires = DateTime.Now.AddHours(1)
-                        });
+                        };
+
+                        sourceContainer.Add((Uri)request.Url, cookie);
+
+                        if (request.StoreRequestCookie)
+                        {
+                            presistentContainer.Add((Uri)request.Url, cookie);
+                        }
                     }
                 }
 
-                var requestCookies = persistentCookieContainer.GetCookies((Uri)request.Url);
-
-                var cookieContainer = new CookieContainer();
-
-                cookieContainer.Add(requestCookies);
-
-                return cookieContainer;
+                return sourceContainer;
             }
         }
 
-        private void HandleResponseCookies(HttpRequest request, CookieContainer cookieContainer)
+        private void PrepareRequestCookies(HttpRequest request, CookieContainer cookieContainer)
         {
-            if (!request.StoreResponseCookie)
+            // Don't collect persistnet cookies for intermediate/redirected urls.
+            /*lock (_cookieContainerCache)
+            {
+                var presistentContainer = _cookieContainerCache.Get("container", () => new CookieContainer());
+                var persistentCookies = presistentContainer.GetCookies((Uri)request.Url);
+                var existingCookies = cookieContainer.GetCookies((Uri)request.Url);
+
+                cookieContainer.Add(persistentCookies);
+                cookieContainer.Add(existingCookies);
+            }*/
+        }
+
+        private void HandleResponseCookies(HttpResponse response, CookieContainer cookieContainer)
+        {
+            var cookieHeaders = response.GetCookieHeaders();
+            if (cookieHeaders.Empty())
             {
                 return;
             }
 
-            lock (_cookieContainerCache)
+            if (response.Request.StoreResponseCookie)
             {
-                var persistentCookieContainer = _cookieContainerCache.Get("container", () => new CookieContainer());
+                lock (_cookieContainerCache)
+                {
+                    var persistentCookieContainer = _cookieContainerCache.Get("container", () => new CookieContainer());
 
-                var cookies = cookieContainer.GetCookies((Uri)request.Url);
-
-                persistentCookieContainer.Add(cookies);
+                    foreach (var cookieHeader in cookieHeaders)
+                    {
+                        try
+                        {
+                            persistentCookieContainer.SetCookies((Uri)response.Request.Url, cookieHeader);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.Debug(ex, "Invalid cookie in {0}", response.Request.Url);
+                        }
+                    }
+                }
             }
         }
 

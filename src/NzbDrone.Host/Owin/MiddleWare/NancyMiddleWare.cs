@@ -2,7 +2,7 @@
 using Nancy.Owin;
 using Owin;
 
-namespace NzbDrone.Host.Owin.MiddleWare
+namespace Radarr.Host.Owin.MiddleWare
 {
     public class NancyMiddleWare : IOwinMiddleWare
     {
@@ -13,7 +13,7 @@ namespace NzbDrone.Host.Owin.MiddleWare
             _nancyBootstrapper = nancyBootstrapper;
         }
 
-        public int Order { get { return 2; } }
+        public int Order => 2;
 
         public void Attach(IAppBuilder appBuilder)
         {

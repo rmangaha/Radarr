@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Moq;
 using NUnit.Framework;
@@ -19,9 +19,8 @@ namespace NzbDrone.Core.Test.Blacklisting
         {
             _event = new DownloadFailedEvent
                      {
-                         SeriesId = 12345,
-                         EpisodeIds = new List<int> {1},
-                         Quality = new QualityModel(Quality.Bluray720p),
+                         MovieId = 69,
+                         Quality = new QualityModel(),
                          SourceTitle = "series.title.s01e01",
                          DownloadClient = "SabnzbdClient",
                          DownloadId = "Sabnzbd_nzo_2dfh73k"
@@ -40,7 +39,7 @@ namespace NzbDrone.Core.Test.Blacklisting
             Subject.Handle(_event);
 
             Mocker.GetMock<IBlacklistRepository>()
-                .Verify(v => v.Insert(It.Is<Blacklist>(b => b.EpisodeIds == _event.EpisodeIds)), Times.Once());
+                .Verify(v => v.Insert(It.Is<Blacklist>(b => b.MovieId == _event.MovieId)), Times.Once());
         }
 
         [Test]
@@ -52,7 +51,7 @@ namespace NzbDrone.Core.Test.Blacklisting
             _event.Data.Remove("protocol");
 
             Mocker.GetMock<IBlacklistRepository>()
-                .Verify(v => v.Insert(It.Is<Blacklist>(b => b.EpisodeIds == _event.EpisodeIds)), Times.Once());
+                .Verify(v => v.Insert(It.Is<Blacklist>(b => b.MovieId == _event.MovieId)), Times.Once());
         }
     }
 }

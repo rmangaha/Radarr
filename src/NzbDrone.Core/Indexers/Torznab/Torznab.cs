@@ -7,7 +7,9 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Indexers.Newznab;
+using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Parser;
+using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.ThingiProvider;
 
 namespace NzbDrone.Core.Indexers.Torznab
@@ -16,19 +18,10 @@ namespace NzbDrone.Core.Indexers.Torznab
     {
         private readonly INewznabCapabilitiesProvider _capabilitiesProvider;
 
-        public override string Name
-        {
-            get
-            {
-                return "Torznab";
-            }
-        }
+        public override string Name => "Torznab";
 
-        public override DownloadProtocol Protocol { get { return DownloadProtocol.Torrent; } }
-        public override int PageSize
-        {
-            get { return _capabilitiesProvider.GetCapabilities(Settings).DefaultPageSize; }
-        }
+        public override DownloadProtocol Protocol => DownloadProtocol.Torrent;
+        public override int PageSize => _capabilitiesProvider.GetCapabilities(Settings).DefaultPageSize;
 
         public override IIndexerRequestGenerator GetRequestGenerator()
         {
@@ -44,12 +37,10 @@ namespace NzbDrone.Core.Indexers.Torznab
             return new TorznabRssParser();
         }
 
-        public override IEnumerable<ProviderDefinition> DefaultDefinitions
+        public override IEnumerable<ProviderDefinition> GetDefaultDefinitions()
         {
-            get
-            {
-                yield return GetDefinition("HD4Free.xyz", GetSettings("http://hd4free.xyz"));
-            }
+            yield return GetDefinition("Jackett", GetSettings("http://localhost:9117/torznab/YOURINDEXER"));
+            yield return GetDefinition("HD4Free.xyz", GetSettings("http://hd4free.xyz"));
         }
 
         public Torznab(INewznabCapabilitiesProvider capabilitiesProvider, IHttpClient httpClient, IIndexerStatusService indexerStatusService, IConfigService configService, IParsingService parsingService, Logger logger)
@@ -75,7 +66,7 @@ namespace NzbDrone.Core.Indexers.Torznab
 
         private TorznabSettings GetSettings(string url, params int[] categories)
         {
-            var settings = new TorznabSettings { Url = url };
+            var settings = new TorznabSettings { BaseUrl = url };
 
             if (categories.Any())
             {
@@ -92,25 +83,47 @@ namespace NzbDrone.Core.Indexers.Torznab
             failures.AddIfNotNull(TestCapabilities());
         }
 
+        protected static List<int> CategoryIds(List<NewznabCategory> categories)
+        {
+            var l = categories.Select(c => c.Id).ToList();
+
+            foreach (var category in categories)
+            {
+                if (category.Subcategories != null)
+                    l.AddRange(CategoryIds(category.Subcategories));
+            }
+            
+            return l;
+        }
+
         protected virtual ValidationFailure TestCapabilities()
         {
             try
             {
                 var capabilities = _capabilitiesProvider.GetCapabilities(Settings);
 
+                var notSupported = Settings.Categories.Except(CategoryIds(capabilities.Categories));
+                
+                if (notSupported.Any())
+                {
+                    _logger.Warn($"{Definition.Name} does not support the following categories: {string.Join(", ", notSupported)}. You should probably remove them.");
+                    if (notSupported.Count() == Settings.Categories.Count())
+                        return new ValidationFailure(string.Empty, $"This indexer does not support any of the selected categories! (You may need to turn on advanced settings to see them)");
+                }
+
                 if (capabilities.SupportedSearchParameters != null && capabilities.SupportedSearchParameters.Contains("q"))
                 {
                     return null;
                 }
 
-                if (capabilities.SupportedTvSearchParameters != null &&
-                    new[] { "q", "tvdbid", "rid" }.Any(v => capabilities.SupportedTvSearchParameters.Contains(v)) &&
-                    new[] { "season", "ep" }.All(v => capabilities.SupportedTvSearchParameters.Contains(v)))
+                if (capabilities.SupportedMovieSearchParameters != null &&
+                    new[] { "q", "imdbid" }.Any(v => capabilities.SupportedMovieSearchParameters.Contains(v)) &&
+                    new[] { "imdbtitle", "imdbyear" }.All(v => capabilities.SupportedMovieSearchParameters.Contains(v)))
                 {
                     return null;
                 }
 
-                return new ValidationFailure(string.Empty, "Indexer does not support required search parameters");
+                return new ValidationFailure(string.Empty, "This indexer does not support searching for movies :(. Tell your indexer staff to enable this or force add the indexer by disabling search, adding the indexer and then enabling it again.");
             }
             catch (Exception ex)
             {
@@ -119,5 +132,6 @@ namespace NzbDrone.Core.Indexers.Torznab
                 return new ValidationFailure(string.Empty, "Unable to connect to indexer, check the log for more details");
             }
         }
+
     }
 }

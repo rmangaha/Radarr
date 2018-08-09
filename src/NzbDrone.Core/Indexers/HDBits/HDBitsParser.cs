@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Specialized;
 using System.Net;
-using System.Web;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Indexers.Exceptions;
 using NzbDrone.Core.Parser.Model;
+using System.Linq;
 
 namespace NzbDrone.Core.Indexers.HDBits
 {
@@ -53,7 +52,21 @@ namespace NzbDrone.Core.Indexers.HDBits
             foreach (var result in queryResults)
             {
                 var id = result.Id;
-                torrentInfos.Add(new TorrentInfo()
+                var internalRelease = (result.TypeOrigin == 1 ? true : false);
+
+                IndexerFlags flags = 0;
+
+                if (result.FreeLeech == "yes")
+                {
+                    flags |= IndexerFlags.G_Freeleech;
+                }
+
+                if (internalRelease)
+                {
+                    flags |= IndexerFlags.HDB_Internal;
+                }
+
+                torrentInfos.Add(new HDBitsInfo()
                 {
                     Guid = string.Format("HDBits-{0}", id),
                     Title = result.Name,
@@ -63,12 +76,17 @@ namespace NzbDrone.Core.Indexers.HDBits
                     InfoUrl = GetInfoUrl(id),
                     Seeders = result.Seeders,
                     Peers = result.Leechers + result.Seeders,
-                    PublishDate = result.Added.ToUniversalTime()
+                    PublishDate = result.Added.ToUniversalTime(),
+                    Internal = internalRelease,
+                    ImdbId = result.ImdbInfo?.Id ?? 0,
+                    IndexerFlags = flags
                 });
             }
 
             return torrentInfos.ToArray();
         }
+
+        public Action<IDictionary<string, string>, DateTime?> CookiesUpdater { get; set; }
 
         private string GetDownloadUrl(string torrentId)
         {

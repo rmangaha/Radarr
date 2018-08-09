@@ -1,5 +1,7 @@
-﻿using FluentValidation;
+﻿using System.Collections.Generic;
+using FluentValidation;
 using NzbDrone.Core.Annotations;
+using NzbDrone.Core.Parser;
 using NzbDrone.Core.ThingiProvider;
 using NzbDrone.Core.Validation;
 
@@ -15,7 +17,7 @@ namespace NzbDrone.Core.Indexers.Omgwtfnzbs
         }
     }
 
-    public class OmgwtfnzbsSettings : IProviderConfig
+    public class OmgwtfnzbsSettings : IIndexerSettings
     {
         private static readonly OmgwtfnzbsSettingsValidator Validator = new OmgwtfnzbsSettingsValidator();
 
@@ -23,6 +25,9 @@ namespace NzbDrone.Core.Indexers.Omgwtfnzbs
         {
             Delay = 30;
         }
+
+        // Unused since Omg has a hardcoded url.
+        public string BaseUrl { get; set; }
 
         [FieldDefinition(0, Label = "Username")]
         public string Username { get; set; }
@@ -32,6 +37,9 @@ namespace NzbDrone.Core.Indexers.Omgwtfnzbs
 
         [FieldDefinition(2, Label = "Delay", HelpText = "Time in minutes to delay new nzbs before they appear on the RSS feed", Advanced = true)]
         public int Delay { get; set; }
+                
+        [FieldDefinition(3, Type = FieldType.Tag, SelectOptions = typeof(Language), Label = "Multi Languages", HelpText = "What languages are normally in a multi release on this indexer?", Advanced = true)]
+        public IEnumerable<int> MultiLanguages { get; set; }
 
         public NzbDroneValidationResult Validate()
         {

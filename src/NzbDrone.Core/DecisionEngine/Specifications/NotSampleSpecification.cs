@@ -1,4 +1,5 @@
-﻿using NLog;
+using System;
+using NLog;
 using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Parser.Model;
 
@@ -8,14 +9,14 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
     {
         private readonly Logger _logger;
 
-        public RejectionType Type { get { return RejectionType.Permanent; } }
+        public RejectionType Type => RejectionType.Permanent;
 
         public NotSampleSpecification(Logger logger)
         {
             _logger = logger;
         }
 
-        public Decision IsSatisfiedBy(RemoteEpisode subject, SearchCriteriaBase searchCriteria)
+        public Decision IsSatisfiedBy(RemoteMovie subject, SearchCriteriaBase searchCriteria)
         {
             if (subject.Release.Title.ToLower().Contains("sample") && subject.Release.Size < 70.Megabytes())
             {

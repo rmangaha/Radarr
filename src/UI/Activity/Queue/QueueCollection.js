@@ -20,34 +20,18 @@ var QueueCollection = PageableCollection.extend({
 
     mode : 'client',
 
-    findEpisode : function(episodeId) {
+    findMovie : function(movieId) {
         return _.find(this.fullCollection.models, function(queueModel) {
-            return queueModel.get('episode').id === episodeId;
+            return queueModel.get('movie').id === movieId;
         });
     },
 
     sortMappings : {
-        series : {
+        movie : {
             sortValue : function(model, attr) {
-                var series = model.get(attr);
+                var movie = model.get(attr);
 
-                return series.get('sortTitle');
-            }
-        },
-
-        episode : {
-            sortValue : function(model, attr) {
-                var episode = model.get('episode');
-
-                return FormatHelpers.pad(episode.get('seasonNumber'), 4) + FormatHelpers.pad(episode.get('episodeNumber'), 4);
-            }
-        },
-
-        episodeTitle : {
-            sortValue : function(model, attr) {
-                var episode = model.get('episode');
-
-                return episode.get('title');
+                return movie.get('sortTitle');
             }
         },
 

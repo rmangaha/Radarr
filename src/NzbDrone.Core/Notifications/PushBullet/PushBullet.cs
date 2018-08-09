@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using FluentValidation.Results;
 using NzbDrone.Common.Extensions;
-using NzbDrone.Core.Tv;
+using NzbDrone.Core.Movies;
 
 namespace NzbDrone.Core.Notifications.PushBullet
 {
@@ -14,44 +14,29 @@ namespace NzbDrone.Core.Notifications.PushBullet
             _proxy = proxy;
         }
 
-        public override string Link
-        {
-            get { return "https://www.pushbullet.com/"; }
-        }
+        public override string Link => "https://www.pushbullet.com/";
 
         public override void OnGrab(GrabMessage grabMessage)
         {
-            const string title = "Sonarr - Episode Grabbed";
+            const string title = "Radarr - Movie Grabbed";
 
             _proxy.SendNotification(title, grabMessage.Message, Settings);
         }
 
         public override void OnDownload(DownloadMessage message)
         {
-            const string title = "Sonarr - Episode Downloaded";
+            const string title = "Radarr - Movie Downloaded";
 
             _proxy.SendNotification(title, message.Message, Settings);
         }
 
-        public override void OnRename(Series series)
+        public override void OnMovieRename(Movie movie)
         {
         }
 
-        public override string Name
-        {
-            get
-            {
-                return "Pushbullet";
-            }
-        }
+        public override string Name => "Pushbullet";
 
-        public override bool SupportsOnRename
-        {
-            get
-            {
-                return false;
-            }
-        }
+        public override bool SupportsOnRename => false;
 
         public override ValidationResult Test()
         {

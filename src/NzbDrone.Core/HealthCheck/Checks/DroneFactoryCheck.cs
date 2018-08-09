@@ -1,6 +1,4 @@
-﻿using System;
-using System.IO;
-using NzbDrone.Common.Disk;
+﻿using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Configuration;
 
@@ -19,7 +17,7 @@ namespace NzbDrone.Core.HealthCheck.Checks
 
         public override HealthCheck Check()
         {
-            var droneFactoryFolder = _configService.DownloadedEpisodesFolder;
+            var droneFactoryFolder = _configService.DownloadedMoviesFolder;
 
             if (droneFactoryFolder.IsNullOrWhiteSpace())
             {

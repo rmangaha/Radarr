@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -133,31 +133,27 @@ namespace NzbDrone.Core.Configuration
             }
         }
 
-        public int Port
-        {
-            get { return GetValueInt("Port", 8989); }
-        }
+        public int Port => GetValueInt("Port", 7878);
 
-        public int SslPort
-        {
-            get { return GetValueInt("SslPort", 9898); }
-        }
+        public int SslPort => GetValueInt("SslPort", 9898);
 
-        public bool EnableSsl
-        {
-            get { return GetValueBoolean("EnableSsl", false); }
-        }
+        public bool EnableSsl => GetValueBoolean("EnableSsl", false);
 
-        public bool LaunchBrowser
-        {
-            get { return GetValueBoolean("LaunchBrowser", true); }
-        }
+        public bool LaunchBrowser => GetValueBoolean("LaunchBrowser", true);
 
         public string ApiKey
         {
             get
             {
-                return GetValue("ApiKey", GenerateApiKey());
+                var apiKey = GetValue("ApiKey", GenerateApiKey());
+
+                if (apiKey.IsNullOrWhiteSpace())
+                {
+                    apiKey = GenerateApiKey();
+                    SetValue("ApiKey", apiKey);
+                }
+
+                return apiKey;
             }
         }
 
@@ -177,28 +173,14 @@ namespace NzbDrone.Core.Configuration
             }
         }
 
-        public bool AnalyticsEnabled
-        {
-            get
-            {
-                return GetValueBoolean("AnalyticsEnabled", true, persist: false);
-            }
-        }
+        public bool AnalyticsEnabled => GetValueBoolean("AnalyticsEnabled", true, persist: false);
 
-        public string Branch
-        {
-            get { return GetValue("Branch", "master").ToLowerInvariant(); }
-        }
+        // TODO: Change back to "master" for the first stable release.
+        public string Branch => GetValue("Branch", "develop").ToLowerInvariant();
 
-        public string LogLevel
-        {
-            get { return GetValue("LogLevel", "Info"); }
-        }
+        public string LogLevel => GetValue("LogLevel", "Info");
 
-        public string SslCertHash
-        {
-            get { return GetValue("SslCertHash", ""); }
-        }
+        public string SslCertHash => GetValue("SslCertHash", "");
 
         public string UrlBase
         {
@@ -215,28 +197,13 @@ namespace NzbDrone.Core.Configuration
             }
         }
 
-        public string UiFolder
-        {
-            get
-            {
-                return GetValue("UiFolder", "UI", false);
-            }
-        }
+        public string UiFolder => GetValue("UiFolder", "UI", false);
 
-        public bool UpdateAutomatically
-        {
-            get { return GetValueBoolean("UpdateAutomatically", false, false); }
-        }
+        public bool UpdateAutomatically => GetValueBoolean("UpdateAutomatically", false, false);
 
-        public UpdateMechanism UpdateMechanism
-        {
-            get { return GetValueEnum("UpdateMechanism", UpdateMechanism.BuiltIn, false); }
-        }
+        public UpdateMechanism UpdateMechanism => GetValueEnum("UpdateMechanism", UpdateMechanism.BuiltIn, false);
 
-        public string UpdateScriptPath
-        {
-            get { return GetValue("UpdateScriptPath", "", false ); }
-        }
+        public string UpdateScriptPath => GetValue("UpdateScriptPath", "", false );
 
         public int GetValueInt(string key, int defaultValue)
         {
@@ -351,12 +318,12 @@ namespace NzbDrone.Core.Configuration
 
                         if (contents.IsNullOrWhiteSpace())
                         {
-                            throw new InvalidConfigFileException($"{_configFile} is empty. Please delete the config file and Sonarr will recreate it.");
+                            throw new InvalidConfigFileException($"{_configFile} is empty. Please delete the config file and Radarr will recreate it.");
                         }
 
                         if (contents.All(char.IsControl))
                         {
-                            throw new InvalidConfigFileException($"{_configFile} is corrupt. Please delete the config file and Sonarr will recreate it.");
+                            throw new InvalidConfigFileException($"{_configFile} is corrupt. Please delete the config file and Radarr will recreate it.");
                         }
 
                         return XDocument.Parse(_diskProvider.ReadAllText(_configFile));
@@ -371,7 +338,7 @@ namespace NzbDrone.Core.Configuration
 
             catch (XmlException ex)
             {
-                throw new InvalidConfigFileException($"{_configFile} is corrupt is invalid. Please delete the config file and Sonarr will recreate it.", ex);
+                throw new InvalidConfigFileException($"{_configFile} is corrupt is invalid. Please delete the config file and Radarr will recreate it.", ex);
             }
         }
 

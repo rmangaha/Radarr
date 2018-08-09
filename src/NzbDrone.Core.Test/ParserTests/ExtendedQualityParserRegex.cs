@@ -1,6 +1,8 @@
 ﻿using FluentAssertions;
 using NUnit.Framework;
+using NzbDrone.Core.CustomFormats;
 using NzbDrone.Core.Parser;
+using NzbDrone.Core.Qualities;
 using NzbDrone.Core.Test.Framework;
 
 namespace NzbDrone.Core.Test.ParserTests
@@ -8,6 +10,11 @@ namespace NzbDrone.Core.Test.ParserTests
     [TestFixture]
     public class ExtendedQualityParserRegex : CoreTest
     {
+        [SetUp]
+        public void Setup()
+        {
+        }
+
         [TestCase("Chuck.S04E05.HDTV.XviD-LOL", 0)]
         [TestCase("Gold.Rush.S04E05.Garnets.or.Gold.REAL.REAL.PROPER.HDTV.x264-W4F", 2)]
         [TestCase("Chuck.S03E17.REAL.PROPER.720p.HDTV.x264-ORENJI-RP", 1)]
@@ -46,6 +53,20 @@ namespace NzbDrone.Core.Test.ParserTests
         public void should_parse_version_from_title(string title, int version)
         {
             QualityParser.ParseQuality(title).Revision.Version.Should().Be(version);
+        }
+
+        [TestCase("Deadpool 2016 2160p 4K UltraHD BluRay DTS-HD MA 7 1 x264-Whatevs", 19)]
+        [TestCase("Deadpool 2016 2160p 4K UltraHD DTS-HD MA 7 1 x264-Whatevs", 16)]
+        [TestCase("Deadpool 2016 4K 2160p UltraHD BluRay AAC2 0 HEVC x265", 19)]
+        [TestCase("The Revenant 2015 2160p UHD BluRay DTS x264-Whatevs", 19)]
+        [TestCase("The Revenant 2015 2160p UHD BluRay FLAC 7 1 x264-Whatevs", 19)]
+        [TestCase("The Martian 2015 2160p Ultra HD BluRay DTS-HD MA 7 1 x264-Whatevs", 19)]
+        [TestCase("Movie.Name.2017.Version.UHD.BluRay.HDR.x265.Atmos.Eng.De-RLSGRP", 19)]
+        [TestCase("Into the Inferno 2016 2160p Netflix WEBRip DD5 1 x264-Whatevs", 18)]
+        public void should_parse_ultrahd_from_title(string title, int version)
+        {
+            var parsed = QualityParser.ParseQuality(title);
+            parsed.Resolution.Should().Be(Resolution.R2160P);
         }
     }
 }

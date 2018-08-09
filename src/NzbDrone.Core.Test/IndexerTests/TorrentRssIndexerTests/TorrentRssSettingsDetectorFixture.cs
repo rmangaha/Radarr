@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using FluentAssertions;
+﻿using FluentAssertions;
 using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Http;
@@ -178,6 +175,26 @@ namespace NzbDrone.Core.Test.IndexerTests.TorrentRssIndexerTests
                 UseEnclosureUrl = true,
                 UseEnclosureLength = true,
                 ParseSizeInDescription = false,
+                ParseSeedersInDescription = false,
+                SizeElementName = null
+            });
+        }
+
+        [Test]
+        public void should_detect_rss_settings_for_AlphaRatio()
+        {
+            _indexerSettings.AllowZeroSize = true;
+
+            GivenRecentFeedResponse("TorrentRss/AlphaRatio.xml");
+
+            var settings = Subject.Detect(_indexerSettings);
+
+            settings.ShouldBeEquivalentTo(new TorrentRssIndexerParserSettings
+            {
+                UseEZTVFormat = false,
+                UseEnclosureUrl = false,
+                UseEnclosureLength = false,
+                ParseSizeInDescription = true,
                 ParseSeedersInDescription = false,
                 SizeElementName = null
             });

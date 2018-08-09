@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using NzbDrone.Api.REST;
@@ -8,6 +8,7 @@ using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.DecisionEngine;
 using System.Linq;
+using NzbDrone.Core.Datastore.Migration;
 
 namespace NzbDrone.Api.Indexers
 {
@@ -24,12 +25,13 @@ namespace NzbDrone.Api.Indexers
         public string Indexer { get; set; }
         public string ReleaseGroup { get; set; }
         public string ReleaseHash { get; set; }
+        public string Edition { get; set; }
         public string Title { get; set; }
         public bool FullSeason { get; set; }
         public int SeasonNumber { get; set; }
-        public Language Language { get; set; }
-        public string AirDate { get; set; }
-        public string SeriesTitle { get; set; }
+        public List<Language> Languages { get; set; }
+        public int Year { get; set; }
+        public string MovieTitle { get; set; }
         public int[] EpisodeNumbers { get; set; }
         public int[] AbsoluteEpisodeNumbers { get; set; }
         public bool Approved { get; set; }
@@ -42,9 +44,11 @@ namespace NzbDrone.Api.Indexers
         public string CommentUrl { get; set; }
         public string DownloadUrl { get; set; }
         public string InfoUrl { get; set; }
-        public bool DownloadAllowed { get; set; }
+        public MappingResultType MappingResult { get; set; }
         public int ReleaseWeight { get; set; }
+        public int SuspectedMovieId { get; set; }
 
+        public IEnumerable<string> IndexerFlags { get; set; }
 
         public string MagnetUrl { get; set; }
         public string InfoHash { get; set; }
@@ -82,33 +86,31 @@ namespace NzbDrone.Api.Indexers
     {
         public static ReleaseResource ToResource(this DownloadDecision model)
         {
-            var releaseInfo = model.RemoteEpisode.Release;
-            var parsedEpisodeInfo = model.RemoteEpisode.ParsedEpisodeInfo;
-            var remoteEpisode = model.RemoteEpisode;
-            var torrentInfo = (model.RemoteEpisode.Release as TorrentInfo) ?? new TorrentInfo();
+            var releaseInfo = model.RemoteMovie.Release;
+            var remoteMovie = model.RemoteMovie;
+            var torrentInfo = (model.RemoteMovie.Release as TorrentInfo) ?? new TorrentInfo();
+            var mappingResult = MappingResultType.Success;
+            mappingResult = model.RemoteMovie.MappingResult;
+            var parsedMovieInfo = model.RemoteMovie.ParsedMovieInfo;
+            var movieId = model.RemoteMovie.Movie?.Id ?? 0; //Why not pull this out in frontend instead of passing another variable
 
-            // TODO: Clean this mess up. don't mix data from multiple classes, use sub-resources instead? (Got a huge Deja Vu, didn't we talk about this already once?)
             return new ReleaseResource
             {
                 Guid = releaseInfo.Guid,
-                Quality = parsedEpisodeInfo.Quality,
-                //QualityWeight
+                Quality = parsedMovieInfo.Quality,
+                QualityWeight = parsedMovieInfo.Quality.Quality.Id, //Id kinda hacky for wheight, but what you gonna do? TODO: Fix this shit!
                 Age = releaseInfo.Age,
                 AgeHours = releaseInfo.AgeHours,
                 AgeMinutes = releaseInfo.AgeMinutes,
                 Size = releaseInfo.Size,
                 IndexerId = releaseInfo.IndexerId,
                 Indexer = releaseInfo.Indexer,
-                ReleaseGroup = parsedEpisodeInfo.ReleaseGroup,
-                ReleaseHash = parsedEpisodeInfo.ReleaseHash,
+                ReleaseGroup = parsedMovieInfo.ReleaseGroup,
+                ReleaseHash = parsedMovieInfo.ReleaseHash,
                 Title = releaseInfo.Title,
-                FullSeason = parsedEpisodeInfo.FullSeason,
-                SeasonNumber = parsedEpisodeInfo.SeasonNumber,
-                Language = parsedEpisodeInfo.Language,
-                AirDate = parsedEpisodeInfo.AirDate,
-                SeriesTitle = parsedEpisodeInfo.SeriesTitle,
-                EpisodeNumbers = parsedEpisodeInfo.EpisodeNumbers,
-                AbsoluteEpisodeNumbers = parsedEpisodeInfo.AbsoluteEpisodeNumbers,
+                Languages = parsedMovieInfo.Languages,
+                Year = parsedMovieInfo.Year,
+                MovieTitle = parsedMovieInfo.MovieTitle,
                 Approved = model.Approved,
                 TemporarilyRejected = model.TemporarilyRejected,
                 Rejected = model.Rejected,
@@ -119,19 +121,20 @@ namespace NzbDrone.Api.Indexers
                 CommentUrl = releaseInfo.CommentUrl,
                 DownloadUrl = releaseInfo.DownloadUrl,
                 InfoUrl = releaseInfo.InfoUrl,
-                DownloadAllowed = remoteEpisode.DownloadAllowed,
+                MappingResult = mappingResult,
                 //ReleaseWeight
+
+                SuspectedMovieId = movieId,
 
                 MagnetUrl = torrentInfo.MagnetUrl,
                 InfoHash = torrentInfo.InfoHash,
                 Seeders = torrentInfo.Seeders,
                 Leechers = (torrentInfo.Peers.HasValue && torrentInfo.Seeders.HasValue) ? (torrentInfo.Peers.Value - torrentInfo.Seeders.Value) : (int?)null,
                 Protocol = releaseInfo.DownloadProtocol,
+                IndexerFlags = torrentInfo.IndexerFlags.ToString().Split(new string[] { ", " }, StringSplitOptions.None),
+                Edition = parsedMovieInfo.Edition,
 
-                IsDaily = parsedEpisodeInfo.IsDaily,
-                IsAbsoluteNumbering = parsedEpisodeInfo.IsAbsoluteNumbering,
-                IsPossibleSpecialEpisode = parsedEpisodeInfo.IsPossibleSpecialEpisode,
-                Special = parsedEpisodeInfo.Special,
+                //Special = parsedMovieInfo.Special,
             };
 
         }

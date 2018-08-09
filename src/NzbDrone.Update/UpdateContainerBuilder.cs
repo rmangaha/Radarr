@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using NzbDrone.Common.Composition;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Http.Dispatchers;
@@ -18,7 +17,7 @@ namespace NzbDrone.Update
         {
             var assemblies = new List<string>
                              {
-                                 "NzbDrone.Update",
+                                 "Radarr.Update",
                                  "NzbDrone.Common"
                              };
 

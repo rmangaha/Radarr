@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
@@ -19,27 +19,7 @@ namespace NzbDrone.Core.Indexers.TorrentRss
             return pageableRequests;
         }
 
-        public virtual IndexerPageableRequestChain GetSearchRequests(SingleEpisodeSearchCriteria searchCriteria)
-        {
-            return new IndexerPageableRequestChain();
-        }
-
-        public virtual IndexerPageableRequestChain GetSearchRequests(SeasonSearchCriteria searchCriteria)
-        {
-            return new IndexerPageableRequestChain();
-        }
-
-        public virtual IndexerPageableRequestChain GetSearchRequests(DailyEpisodeSearchCriteria searchCriteria)
-        {
-            return new IndexerPageableRequestChain();
-        }
-
-        public virtual IndexerPageableRequestChain GetSearchRequests(AnimeEpisodeSearchCriteria searchCriteria)
-        {
-            return new IndexerPageableRequestChain();
-        }
-
-        public virtual IndexerPageableRequestChain GetSearchRequests(SpecialEpisodeSearchCriteria searchCriteria)
+        public IndexerPageableRequestChain GetSearchRequests(MovieSearchCriteria searchCriteria)
         {
             return new IndexerPageableRequestChain();
         }
@@ -58,5 +38,8 @@ namespace NzbDrone.Core.Indexers.TorrentRss
 
             yield return request;
         }
+        
+        public Func<IDictionary<string, string>> GetCookies { get; set; }
+        public Action<IDictionary<string, string>, DateTime?> CookiesUpdater { get; set; }
     }
 }

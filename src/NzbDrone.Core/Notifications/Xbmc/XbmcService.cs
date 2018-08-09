@@ -1,21 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
 using FluentValidation.Results;
 using Newtonsoft.Json.Linq;
 using NLog;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Notifications.Xbmc.Model;
-using NzbDrone.Core.Tv;
+using NzbDrone.Core.Movies;
 
 namespace NzbDrone.Core.Notifications.Xbmc
 {
     public interface IXbmcService
     {
         void Notify(XbmcSettings settings, string title, string message);
-        void Update(XbmcSettings settings, Series series);
+        void UpdateMovie(XbmcSettings settings, Movie movie);
         void Clean(XbmcSettings settings);
         ValidationFailure Test(XbmcSettings settings, string message);
     }
@@ -46,10 +45,10 @@ namespace NzbDrone.Core.Notifications.Xbmc
             provider.Notify(settings, title, message);
         }
 
-        public void Update(XbmcSettings settings, Series series)
+        public void UpdateMovie(XbmcSettings settings, Movie movie)
         {
             var provider = GetApiProvider(settings);
-            provider.Update(settings, series);
+            provider.UpdateMovie(settings, movie);
         }
 
         public void Clean(XbmcSettings settings)

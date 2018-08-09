@@ -92,15 +92,6 @@ var Collection = PageableCollection.extend({
             }
         },
 
-        percentOfEpisodes : {
-            sortValue : function(model, attr) {
-                var percentOfEpisodes = model.get(attr);
-                var episodeCount = model.get('episodeCount');
-
-                return percentOfEpisodes + episodeCount / 1000000;
-            }
-        },
-
         path : {
             sortValue : function(model) {
                 var path = model.get('path');
@@ -117,4 +108,4 @@ Collection = AsPersistedStateCollection.call(Collection);
 
 var data = ApiData.get('series');
 
-module.exports = new Collection(data, { full : true }).bindSignalR();
+module.exports = new Collection(data, { full : true }).bindSignalR(); 

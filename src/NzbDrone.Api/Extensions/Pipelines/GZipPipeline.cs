@@ -13,7 +13,7 @@ namespace NzbDrone.Api.Extensions.Pipelines
     {
         private readonly Logger _logger;
 
-        public int Order { get { return 0; } }
+        public int Order => 0;
 
         public GzipCompressionPipeline(Logger logger)
         {
@@ -33,7 +33,8 @@ namespace NzbDrone.Api.Extensions.Pipelines
             try
             {
                 if (
-                   !response.ContentType.Contains("image")
+                   response.Contents != Response.NoBody
+                && !response.ContentType.Contains("image")
                 && !response.ContentType.Contains("font")
                 && request.Headers.AcceptEncoding.Any(x => x.Contains("gzip"))
                 && !AlreadyGzipEncoded(response)

@@ -26,9 +26,9 @@ namespace NzbDrone.Core.DecisionEngine.Specifications.RssSync
             _logger = logger;
         }
 
-        public RejectionType Type { get { return RejectionType.Permanent; } }
+        public RejectionType Type => RejectionType.Permanent;
 
-        public virtual Decision IsSatisfiedBy(RemoteEpisode subject, SearchCriteriaBase searchCriteria)
+        public virtual Decision IsSatisfiedBy(RemoteMovie subject, SearchCriteriaBase searchCriteria)
         {
             if (searchCriteria != null)
             {
@@ -39,27 +39,25 @@ namespace NzbDrone.Core.DecisionEngine.Specifications.RssSync
             var cdhEnabled = _configService.EnableCompletedDownloadHandling;
 
             _logger.Debug("Performing history status check on report");
-            foreach (var episode in subject.Episodes)
-            {
-                _logger.Debug("Checking current status of episode [{0}] in history", episode.Id);
-                var mostRecent = _historyService.MostRecentForEpisode(episode.Id);
+                _logger.Debug("Checking current status of movie [{0}] in history", subject.Movie.Id);
+                var mostRecent = _historyService.MostRecentForMovie(subject.Movie.Id);
 
                 if (mostRecent != null && mostRecent.EventType == HistoryEventType.Grabbed)
                 {
                     var recent = mostRecent.Date.After(DateTime.UtcNow.AddHours(-12));
-                    var cutoffUnmet = _qualityUpgradableSpecification.CutoffNotMet(subject.Series.Profile, mostRecent.Quality, subject.ParsedEpisodeInfo.Quality);
-                    var upgradeable = _qualityUpgradableSpecification.IsUpgradable(subject.Series.Profile, mostRecent.Quality, subject.ParsedEpisodeInfo.Quality);
+                    var cutoffUnmet = _qualityUpgradableSpecification.CutoffNotMet(subject.Movie.Profile, mostRecent.Quality, subject.ParsedMovieInfo.Quality);
+                    var upgradeable = _qualityUpgradableSpecification.IsUpgradable(subject.Movie.Profile, mostRecent.Quality, subject.ParsedMovieInfo.Quality);
 
                     if (!recent && cdhEnabled)
                     {
-                        continue;
+                    return Decision.Accept();
                     }
 
                     if (!cutoffUnmet)
                     {
                         if (recent)
                         {
-                            return Decision.Reject("Recent grab event in history already meets cutoff: {0}", mostRecent.Quality);  
+                            return Decision.Reject("Recent grab event in history already meets cutoff: {0}", mostRecent.Quality);
                         }
 
                         return Decision.Reject("CDH is disabled and grab event in history already meets cutoff: {0}", mostRecent.Quality);
@@ -75,7 +73,7 @@ namespace NzbDrone.Core.DecisionEngine.Specifications.RssSync
                         return Decision.Reject("CDH is disabled and grab event in history is of equal or higher quality: {0}", mostRecent.Quality);
                     }
                 }
-            }
+            
 
             return Decision.Accept();
         }

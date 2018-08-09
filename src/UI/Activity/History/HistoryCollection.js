@@ -45,20 +45,24 @@ var Collection = PageableCollection.extend({
         ],
         'deleted'  : [
             'eventType',
-            '5'
+            '6'
         ]
     },
 
     sortMappings : {
-        'series' : { sortKey : 'series.sortTitle' }
+        'movie' : { sortKey : 'movie.title' }
     },
 
     initialize : function(options) {
         delete this.queryParams.episodeId;
+        delete this.queryParams.movieId;
 
         if (options) {
             if (options.episodeId) {
                 this.queryParams.episodeId = options.episodeId;
+            }
+            if (options.movieId) {
+                this.queryParams.movieId = options.movieId;
             }
         }
     },

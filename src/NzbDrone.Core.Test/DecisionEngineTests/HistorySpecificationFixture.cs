@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using FizzWare.NBuilder;
 using FluentAssertions;
@@ -11,7 +11,7 @@ using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Profiles;
 using NzbDrone.Core.Qualities;
-using NzbDrone.Core.Tv;
+using NzbDrone.Core.Movies;
 using NzbDrone.Core.DecisionEngine;
 
 using NzbDrone.Core.Test.Framework;
@@ -23,11 +23,10 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
     {
         private HistorySpecification _upgradeHistory;
 
-        private RemoteEpisode _parseResultMulti;
-        private RemoteEpisode _parseResultSingle;
+        private RemoteMovie _parseResultSingle;
         private QualityModel _upgradableQuality;
         private QualityModel _notupgradableQuality;
-        private Series _fakeSeries;
+        private Movie _fakeMovie;
         private const int FIRST_EPISODE_ID = 1;
         private const int SECOND_EPISODE_ID = 2;
 
@@ -37,29 +36,14 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
             Mocker.Resolve<QualityUpgradableSpecification>();
             _upgradeHistory = Mocker.Resolve<HistorySpecification>();
 
-            var singleEpisodeList = new List<Episode> { new Episode { Id = FIRST_EPISODE_ID, SeasonNumber = 12, EpisodeNumber = 3 } };
-            var doubleEpisodeList = new List<Episode> { 
-                                                            new Episode {Id = FIRST_EPISODE_ID, SeasonNumber = 12, EpisodeNumber = 3 }, 
-                                                            new Episode {Id = SECOND_EPISODE_ID, SeasonNumber = 12, EpisodeNumber = 4 }, 
-                                                            new Episode {Id = 3, SeasonNumber = 12, EpisodeNumber = 5 }
-                                                       };
-
-            _fakeSeries = Builder<Series>.CreateNew()
+            _fakeMovie = Builder<Movie>.CreateNew()
                          .With(c => c.Profile = new Profile { Cutoff = Quality.Bluray1080p, Items = Qualities.QualityFixture.GetDefaultQualities() })
                          .Build();
 
-            _parseResultMulti = new RemoteEpisode
+            _parseResultSingle = new RemoteMovie
             {
-                Series = _fakeSeries,
-                ParsedEpisodeInfo = new ParsedEpisodeInfo { Quality = new QualityModel(Quality.DVD, new Revision(version: 2)) },
-                Episodes = doubleEpisodeList
-            };
-
-            _parseResultSingle = new RemoteEpisode
-            {
-                Series = _fakeSeries,
-                ParsedEpisodeInfo = new ParsedEpisodeInfo { Quality = new QualityModel(Quality.DVD, new Revision(version: 2)) },
-                Episodes = singleEpisodeList
+                Movie = _fakeMovie,
+                ParsedMovieInfo = new ParsedMovieInfo { Quality = new QualityModel(Quality.DVD, new Revision(version: 2)) }
             };
 
             _upgradableQuality = new QualityModel(Quality.SDTV, new Revision(version: 1));
@@ -72,7 +56,7 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
 
         private void GivenMostRecentForEpisode(int episodeId, string downloadId, QualityModel quality, DateTime date, HistoryEventType eventType)
         {
-            Mocker.GetMock<IHistoryService>().Setup(s => s.MostRecentForEpisode(episodeId))
+            Mocker.GetMock<IHistoryService>().Setup(s => s.MostRecentForMovie(episodeId))
                   .Returns(new History.History { DownloadId = downloadId, Quality = quality, Date = date, EventType = eventType });
         }
 
@@ -86,21 +70,21 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
         [Test]
         public void should_return_true_if_it_is_a_search()
         {
-            _upgradeHistory.IsSatisfiedBy(_parseResultMulti, new SeasonSearchCriteria()).Accepted.Should().BeTrue();
+            _upgradeHistory.IsSatisfiedBy(_parseResultSingle, new MovieSearchCriteria()).Accepted.Should().BeTrue();
         }
 
         [Test]
         public void should_return_true_if_latest_history_item_is_null()
         {
-            Mocker.GetMock<IHistoryService>().Setup(s => s.MostRecentForEpisode(It.IsAny<int>())).Returns((History.History)null);
-            _upgradeHistory.IsSatisfiedBy(_parseResultMulti, null).Accepted.Should().BeTrue();
+            Mocker.GetMock<IHistoryService>().Setup(s => s.MostRecentForMovie(It.IsAny<int>())).Returns((History.History)null);
+            _upgradeHistory.IsSatisfiedBy(_parseResultSingle, null).Accepted.Should().BeTrue();
         }
 
         [Test]
         public void should_return_true_if_latest_history_item_is_not_grabbed()
         {
             GivenMostRecentForEpisode(FIRST_EPISODE_ID, string.Empty, _notupgradableQuality, DateTime.UtcNow, HistoryEventType.DownloadFailed);
-            _upgradeHistory.IsSatisfiedBy(_parseResultMulti, null).Accepted.Should().BeTrue();
+            _upgradeHistory.IsSatisfiedBy(_parseResultSingle, null).Accepted.Should().BeTrue();
         }
 
 //        [Test]
@@ -114,7 +98,7 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
         public void should_return_true_if_latest_history_item_is_older_than_twelve_hours()
         {
             GivenMostRecentForEpisode(FIRST_EPISODE_ID, string.Empty, _notupgradableQuality, DateTime.UtcNow.AddHours(-13), HistoryEventType.Grabbed);
-            _upgradeHistory.IsSatisfiedBy(_parseResultMulti, null).Accepted.Should().BeTrue();
+            _upgradeHistory.IsSatisfiedBy(_parseResultSingle, null).Accepted.Should().BeTrue();
         }
 
         [Test]
@@ -124,6 +108,7 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
             _upgradeHistory.IsSatisfiedBy(_parseResultSingle, null).Accepted.Should().BeTrue();
         }
 
+        /*
         [Test]
         public void should_be_upgradable_if_both_episodes_are_upgradable()
         {
@@ -154,13 +139,13 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
             GivenMostRecentForEpisode(FIRST_EPISODE_ID, string.Empty, _notupgradableQuality, DateTime.UtcNow, HistoryEventType.Grabbed);
             GivenMostRecentForEpisode(SECOND_EPISODE_ID, string.Empty, _upgradableQuality, DateTime.UtcNow, HistoryEventType.Grabbed);
             _upgradeHistory.IsSatisfiedBy(_parseResultMulti, null).Accepted.Should().BeFalse();
-        }
+        }*/
 
         [Test]
         public void should_not_be_upgradable_if_episode_is_of_same_quality_as_existing()
         {
-            _fakeSeries.Profile = new Profile { Cutoff = Quality.Bluray1080p, Items = Qualities.QualityFixture.GetDefaultQualities() };
-            _parseResultSingle.ParsedEpisodeInfo.Quality = new QualityModel(Quality.WEBDL1080p, new Revision(version: 1));
+            _fakeMovie.Profile = new Profile { Cutoff = Quality.Bluray1080p, Items = Qualities.QualityFixture.GetDefaultQualities() };
+            _parseResultSingle.ParsedMovieInfo.Quality = new QualityModel(Quality.WEBDL1080p, new Revision(version: 1));
             _upgradableQuality = new QualityModel(Quality.WEBDL1080p, new Revision(version: 1));
 
             GivenMostRecentForEpisode(FIRST_EPISODE_ID, string.Empty, _upgradableQuality, DateTime.UtcNow, HistoryEventType.Grabbed);
@@ -171,8 +156,8 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
         [Test]
         public void should_not_be_upgradable_if_cutoff_already_met()
         {
-            _fakeSeries.Profile = new Profile { Cutoff = Quality.WEBDL1080p, Items = Qualities.QualityFixture.GetDefaultQualities() };
-            _parseResultSingle.ParsedEpisodeInfo.Quality = new QualityModel(Quality.WEBDL1080p, new Revision(version: 1));
+            _fakeMovie.Profile = new Profile { Cutoff = Quality.WEBDL1080p, Items = Qualities.QualityFixture.GetDefaultQualities() };
+            _parseResultSingle.ParsedMovieInfo.Quality = new QualityModel(Quality.WEBDL1080p, new Revision(version: 1));
             _upgradableQuality = new QualityModel(Quality.Bluray1080p, new Revision(version: 1));
 
             GivenMostRecentForEpisode(FIRST_EPISODE_ID, string.Empty, _upgradableQuality, DateTime.UtcNow, HistoryEventType.Grabbed);
@@ -184,7 +169,7 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
         public void should_return_false_if_latest_history_item_is_only_one_hour_old()
         {
             GivenMostRecentForEpisode(FIRST_EPISODE_ID, string.Empty, _notupgradableQuality, DateTime.UtcNow.AddHours(-1), HistoryEventType.Grabbed);
-            _upgradeHistory.IsSatisfiedBy(_parseResultMulti, null).Accepted.Should().BeFalse();
+            _upgradeHistory.IsSatisfiedBy(_parseResultSingle, null).Accepted.Should().BeFalse();
         }
 
         [Test]
@@ -192,15 +177,15 @@ namespace NzbDrone.Core.Test.DecisionEngineTests
         {
             GivenCdhDisabled();
             GivenMostRecentForEpisode(FIRST_EPISODE_ID, "test", _upgradableQuality, DateTime.UtcNow.AddDays(-100), HistoryEventType.Grabbed);
-            _upgradeHistory.IsSatisfiedBy(_parseResultMulti, null).Accepted.Should().BeTrue();
+            _upgradeHistory.IsSatisfiedBy(_parseResultSingle, null).Accepted.Should().BeTrue();
         }
 
         [Test]
         public void should_return_false_if_cutoff_already_met_and_cdh_is_disabled()
         {
             GivenCdhDisabled();
-            _fakeSeries.Profile = new Profile { Cutoff = Quality.WEBDL1080p, Items = Qualities.QualityFixture.GetDefaultQualities() };
-            _parseResultSingle.ParsedEpisodeInfo.Quality = new QualityModel(Quality.Bluray1080p, new Revision(version: 1));
+            _fakeMovie.Profile = new Profile { Cutoff = Quality.WEBDL1080p, Items = Qualities.QualityFixture.GetDefaultQualities() };
+            _parseResultSingle.ParsedMovieInfo.Quality = new QualityModel(Quality.Bluray1080p, new Revision(version: 1));
             _upgradableQuality = new QualityModel(Quality.WEBDL1080p, new Revision(version: 1));
 
             GivenMostRecentForEpisode(FIRST_EPISODE_ID, "test", _upgradableQuality, DateTime.UtcNow.AddDays(-100), HistoryEventType.Grabbed);

@@ -17,13 +17,13 @@ namespace NzbDrone.Mono.Disk
         private static readonly Logger Logger = NzbDroneLogger.GetLogger(typeof(DiskProvider));
 
         private readonly IProcMountProvider _procMountProvider;
-        private readonly ISymbolicLinkResolver _symLinkResolver;
+        private readonly ISymbLinkResolver _symLinkResolver;
 
         // Mono supports sending -1 for a uint to indicate that the owner or group should not be set
         // `unchecked((uint)-1)` and `uint.MaxValue` are the same thing.
         private const uint UNCHANGED_ID = uint.MaxValue;
 
-        public DiskProvider(IProcMountProvider procMountProvider, ISymbolicLinkResolver symLinkResolver)
+        public DiskProvider(IProcMountProvider procMountProvider, ISymbLinkResolver symLinkResolver)
         {
             _procMountProvider = procMountProvider;
             _symLinkResolver = symLinkResolver;
@@ -31,7 +31,7 @@ namespace NzbDrone.Mono.Disk
 
         public override IMount GetMount(string path)
         {
-            path = _symLinkResolver.GetCompleteRealPath(path);
+            path = _symLinkResolver.GetCompletePath(path);
 
             return base.GetMount(path);
         }
@@ -40,24 +40,15 @@ namespace NzbDrone.Mono.Disk
         {
             Ensure.That(path, () => path).IsValidPath();
 
-            try
-            {
-                var mount = GetMount(path);
+            var mount = GetMount(path);
 
-                if (mount == null)
-                {
-                    Logger.Debug("Unable to get free space for '{0}', unable to find suitable drive", path);
-                    return null;
-                }
-
-                return mount.AvailableFreeSpace;
-            }
-            catch (InvalidOperationException ex)
+            if (mount == null)
             {
-                Logger.Error(ex, "Couldn't get free space for " + path);
+                Logger.Debug("Unable to get free space for '{0}', unable to find suitable drive", path);
+                return null;
             }
 
-            return null;
+            return mount.AvailableFreeSpace;
         }
 
         public override void InheritFolderPermissions(string filename)
@@ -86,31 +77,23 @@ namespace NzbDrone.Mono.Disk
 
         public override List<IMount> GetMounts()
         {
-            return GetDriveInfoMounts().Select(d => new DriveInfoMount(d, FindDriveType.Find(d.DriveFormat)))
-                                       .Where(d => d.DriveType == DriveType.Fixed || d.DriveType == DriveType.Network || d.DriveType == DriveType.Removable)
-                                       .Concat(_procMountProvider.GetMounts())
-                                       .DistinctBy(v => v.RootDirectory)
-                                       .ToList();
+            return _procMountProvider.GetMounts()
+                                     .Concat(GetDriveInfoMounts()
+                                                 .Select(d => new DriveInfoMount(d, FindDriveType.Find(d.DriveFormat)))
+                                                 .Where(d => d.DriveType == DriveType.Fixed ||
+                                                             d.DriveType == DriveType.Network || d.DriveType ==
+                                                             DriveType.Removable))
+                                     .DistinctBy(v => v.RootDirectory)
+                                     .ToList();
         }
 
         public override long? GetTotalSize(string path)
         {
             Ensure.That(path, () => path).IsValidPath();
 
-            try
-            {
-                var mount = GetMount(path);
+            var mount = GetMount(path);
 
-                if (mount == null) return null;
-
-                return mount.TotalSize;
-            }
-            catch (InvalidOperationException e)
-            {
-                Logger.Error(e, "Couldn't get total space for " + path);
-            }
-
-            return null;
+            return mount?.TotalSize;
         }
 
         public override bool TryCreateHardLink(string source, string destination)
@@ -207,7 +190,7 @@ namespace NzbDrone.Mono.Disk
 
             return g.gr_gid;
 
-            
+
         }
     }
 }

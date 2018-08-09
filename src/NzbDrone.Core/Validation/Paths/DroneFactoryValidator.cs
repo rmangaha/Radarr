@@ -1,5 +1,4 @@
-﻿using System;
-using FluentValidation.Validators;
+﻿using FluentValidation.Validators;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Configuration;
 
@@ -19,7 +18,7 @@ namespace NzbDrone.Core.Validation.Paths
         {
             if (context.PropertyValue == null) return false;
 
-            var droneFactory = _configService.DownloadedEpisodesFolder;
+            var droneFactory = _configService.DownloadedMoviesFolder;
 
             if (string.IsNullOrWhiteSpace(droneFactory)) return true;
 

@@ -14,7 +14,7 @@ namespace NzbDrone.Api.Extensions.Pipelines
             _cacheableSpecification = cacheableSpecification;
         }
 
-        public int Order { get { return 0; } }
+        public int Order => 0;
 
         public void Register(IPipelines pipelines)
         {
@@ -23,6 +23,8 @@ namespace NzbDrone.Api.Extensions.Pipelines
 
         private void Handle(NancyContext context)
         {
+            if (context.Request.Method == "OPTIONS") return;
+
             if (_cacheableSpecification.IsCacheable(context))
             {
                 context.Response.Headers.EnableCache();

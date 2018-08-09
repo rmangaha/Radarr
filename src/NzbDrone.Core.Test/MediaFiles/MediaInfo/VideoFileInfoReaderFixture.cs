@@ -5,7 +5,6 @@ using NUnit.Framework;
 using NzbDrone.Common.Disk;
 using NzbDrone.Core.MediaFiles.MediaInfo;
 using NzbDrone.Core.Test.Framework;
-using NzbDrone.Test.Common;
 using NzbDrone.Test.Common.Categories;
 
 namespace NzbDrone.Core.Test.MediaFiles.MediaInfo
@@ -101,5 +100,23 @@ namespace NzbDrone.Core.Test.MediaFiles.MediaInfo
 
             stream.Close();
         }
+
+		[Test]
+		[TestCase("/ Front: L R", 2.0)]
+		public void should_correctly_read_audio_channels(string ChannelPositions, decimal formattedChannels)
+		{
+			var info = new MediaInfoModel()
+			{
+				VideoCodec = "AVC",
+				AudioFormat = "DTS",
+				AudioLanguages = "English",
+				Subtitles = "English",
+				AudioChannels = 2,
+				AudioChannelPositions = ChannelPositions,
+				SchemaRevision = 3,
+			};
+
+			info.FormattedAudioChannels.Should().Be(formattedChannels);
+		}
     }
 }

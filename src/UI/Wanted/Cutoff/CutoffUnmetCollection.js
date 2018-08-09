@@ -1,5 +1,5 @@
 var _ = require('underscore');
-var EpisodeModel = require('../../Series/EpisodeModel');
+var MovieModel = require('../../Movies/MovieModel');
 var PagableCollection = require('backbone.pageable');
 var AsFilteredCollection = require('../../Mixins/AsFilteredCollection');
 var AsSortedCollection = require('../../Mixins/AsSortedCollection');
@@ -7,13 +7,13 @@ var AsPersistedStateCollection = require('../../Mixins/AsPersistedStateCollectio
 
 var Collection = PagableCollection.extend({
     url       : window.NzbDrone.ApiRoot + '/wanted/cutoff',
-    model     : EpisodeModel,
+    model     : MovieModel,
     tableName : 'wanted.cutoff',
 
     state : {
-        pageSize : 15,
-        sortKey  : 'airDateUtc',
-        order    : 1
+        pageSize : 50,
+        sortKey  : 'title',
+        order    : -1
     },
 
     queryParams : {
@@ -28,7 +28,7 @@ var Collection = PagableCollection.extend({
         }
     },
 
-    // Filter Modes
+
     filterModes : {
         'monitored'   : [
             'monitored',
@@ -38,11 +38,28 @@ var Collection = PagableCollection.extend({
             'monitored',
             'false'
         ],
+        'announced' : [
+            'status',
+            'announced'
+        ],
+        'incinemas' : [
+            'status',
+            'inCinemas'
+        ],
+        'released' : [
+            'status',
+            'released'
+        ],
+        'available' : [
+            'status',
+            'available'
+        ],
+        'all' : [
+            'all',
+            'all'
+        ]
     },
 
-    sortMappings : {
-        'series' : { sortKey : 'series.sortTitle' }
-    },
 
     parseState : function(resp) {
         return { totalRecords : resp.totalRecords };

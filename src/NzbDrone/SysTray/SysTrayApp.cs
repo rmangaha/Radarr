@@ -4,7 +4,7 @@ using System.Windows.Forms;
 using NLog;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Processes;
-using NzbDrone.Host;
+using Radarr.Host;
 
 namespace NzbDrone.SysTray
 {
@@ -38,8 +38,8 @@ namespace NzbDrone.SysTray
             _trayMenu.MenuItems.Add("-");
             _trayMenu.MenuItems.Add("Exit", OnExit);
 
-            _trayIcon.Text = string.Format("Sonarr - {0}", BuildInfo.Version);
-            _trayIcon.Icon = Properties.Resources.NzbDroneIcon;
+            _trayIcon.Text = string.Format("Radarr - {0}", BuildInfo.Version);
+            _trayIcon.Icon = Properties.Resources.Radarr;
 
             _trayIcon.ContextMenu = _trayMenu;
             _trayIcon.Visible = true;

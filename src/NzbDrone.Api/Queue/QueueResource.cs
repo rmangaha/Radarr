@@ -1,9 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using NzbDrone.Api.REST;
 using NzbDrone.Core.Qualities;
-using NzbDrone.Api.Series;
-using NzbDrone.Api.Episodes;
+using NzbDrone.Api.Movies;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.Indexers;
 using System.Linq;
@@ -12,8 +11,7 @@ namespace NzbDrone.Api.Queue
 {
     public class QueueResource : RestResource
     {
-        public SeriesResource Series { get; set; }
-        public EpisodeResource Episode { get; set; }
+        public MovieResource Movie { get; set; }
         public QualityModel Quality { get; set; }
         public decimal Size { get; set; }
         public string Title { get; set; }
@@ -36,9 +34,6 @@ namespace NzbDrone.Api.Queue
             return new QueueResource
             {
                 Id = model.Id,
-
-                Series = model.Series.ToResource(),
-                Episode = model.Episode.ToResource(),
                 Quality = model.Quality,
                 Size = model.Size,
                 Title = model.Title,
@@ -49,7 +44,8 @@ namespace NzbDrone.Api.Queue
                 TrackedDownloadStatus = model.TrackedDownloadStatus,
                 StatusMessages = model.StatusMessages,
                 DownloadId = model.DownloadId,
-                Protocol = model.Protocol
+                Protocol = model.Protocol,
+                Movie = model.Movie.ToResource()
             };
         }
 

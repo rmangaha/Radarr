@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using FluentValidation.Results;
@@ -34,54 +34,32 @@ namespace NzbDrone.Core.Indexers
             _logger = logger;
         }
 
-        public Type ConfigContract
-        {
-            get { return typeof(TSettings); }
-        }
+        public Type ConfigContract => typeof(TSettings);
 
-        public virtual ProviderMessage Message
+        public virtual ProviderMessage Message => null;
+
+        public virtual IEnumerable<ProviderDefinition> GetDefaultDefinitions()
         {
-            get
+            var config = (IProviderConfig)new TSettings();
+
+            yield return new IndexerDefinition
             {
-                return null;
-            }
-        }
-
-        public virtual IEnumerable<ProviderDefinition> DefaultDefinitions
-        {
-            get
-            {
-                var config = (IProviderConfig)new TSettings();
-
-                yield return new IndexerDefinition
-                {
-                    Name = GetType().Name,
-                    EnableRss = config.Validate().IsValid && SupportsRss,
-                    EnableSearch = config.Validate().IsValid && SupportsSearch,
-                    Implementation = GetType().Name,
-                    Settings = config
-                };
-            }
+                Name = GetType().Name,
+                EnableRss = config.Validate().IsValid && SupportsRss,
+                EnableSearch = config.Validate().IsValid && SupportsSearch,
+                Implementation = GetType().Name,
+                Settings = config
+            };
         }
 
         public virtual ProviderDefinition Definition { get; set; }
 
         public virtual object RequestAction(string action, IDictionary<string, string> query) { return null; }
 
-        protected TSettings Settings
-        {
-            get
-            {
-                return (TSettings)Definition.Settings;
-            }
-        }
+        protected TSettings Settings => (TSettings)Definition.Settings;
 
         public abstract IList<ReleaseInfo> FetchRecent();
-        public abstract IList<ReleaseInfo> Fetch(SeasonSearchCriteria searchCriteria);
-        public abstract IList<ReleaseInfo> Fetch(SingleEpisodeSearchCriteria searchCriteria);
-        public abstract IList<ReleaseInfo> Fetch(DailyEpisodeSearchCriteria searchCriteria);
-        public abstract IList<ReleaseInfo> Fetch(AnimeEpisodeSearchCriteria searchCriteria);
-        public abstract IList<ReleaseInfo> Fetch(SpecialEpisodeSearchCriteria searchCriteria);
+        public abstract IList<ReleaseInfo> Fetch(MovieSearchCriteria searchCriteria);
 
         protected virtual IList<ReleaseInfo> CleanupReleases(IEnumerable<ReleaseInfo> releases)
         {

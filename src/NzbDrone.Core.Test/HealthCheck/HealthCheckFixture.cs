@@ -1,5 +1,4 @@
-﻿using System;
-using FluentAssertions;
+﻿using FluentAssertions;
 using NUnit.Framework;
 using NzbDrone.Core.HealthCheck;
 using NzbDrone.Core.Test.Framework;
@@ -9,7 +8,7 @@ namespace NzbDrone.Core.Test.HealthCheck
     [TestFixture]
     public class HealthCheckFixture : CoreTest
     {
-        private const string WikiRoot = "https://github.com/Sonarr/Sonarr/wiki/";
+        private const string WikiRoot = "https://github.com/Radarr/Radarr/wiki/";
 
         [TestCase("I blew up because of some weird user mistake", null, WikiRoot + "Health-checks#i-blew-up-because-of-some-weird-user-mistake")]
         [TestCase("I blew up because of some weird user mistake", "#my-health-check", WikiRoot + "Health-checks#my-health-check")]

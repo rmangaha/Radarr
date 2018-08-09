@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using FluentValidation.Results;
 using NzbDrone.Common.Extensions;
-using NzbDrone.Core.Tv;
+using NzbDrone.Core.Movies;
 
 namespace NzbDrone.Core.Notifications.Plex
 {
@@ -14,42 +14,27 @@ namespace NzbDrone.Core.Notifications.Plex
             _plexClientService = plexClientService;
         }
 
-        public override string Link
-        {
-            get { return "http://www.plexapp.com/"; }
-        }
+        public override string Link => "http://www.plexapp.com/";
 
         public override void OnGrab(GrabMessage grabMessage)
         {
-            const string header = "Sonarr [TV] - Grabbed";
+            const string header = "Radarr [TV] - Grabbed";
             _plexClientService.Notify(Settings, header, grabMessage.Message);
         }
 
         public override void OnDownload(DownloadMessage message)
         {
-            const string header = "Sonarr [TV] - Downloaded";
+            const string header = "Radarr [TV] - Downloaded";
             _plexClientService.Notify(Settings, header, message.Message);
         }
 
-        public override void OnRename(Series series)
+        public override void OnMovieRename(Movie movie)
         {
         }
+		
+        public override string Name => "Plex Media Center";
 
-        public override string Name
-        {
-            get
-            {
-                return "Plex Media Center";
-            }
-        }
-
-        public override bool SupportsOnRename
-        {
-            get
-            {
-                return false;
-            }
-        }
+        public override bool SupportsOnRename => false;
 
         public override ValidationResult Test()
         {

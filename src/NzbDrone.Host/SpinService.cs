@@ -1,9 +1,10 @@
 ﻿using System.Threading;
 using NLog;
+using NLog.Common;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Processes;
 
-namespace NzbDrone.Host
+namespace Radarr.Host
 {
     public interface IWaitForExit
     {

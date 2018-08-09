@@ -1,11 +1,11 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Extras.Files;
 using NzbDrone.Core.Parser;
-using NzbDrone.Core.Tv;
+using NzbDrone.Core.Movies;
 
 namespace NzbDrone.Core.Extras.Others
 {
@@ -25,50 +25,39 @@ namespace NzbDrone.Core.Extras.Others
             _logger = logger;
         }
 
-        public override int Order
-        {
-            get
-            {
-                return 2;
-            }
-        }
+        public override int Order => 2;
 
-        public override IEnumerable<ExtraFile> ProcessFiles(Series series, List<string> filesOnDisk, List<string> importedFiles)
+        public override IEnumerable<ExtraFile> ProcessFiles(Movie movie, List<string> filesOnDisk, List<string> importedFiles)
         {
-            _logger.Debug("Looking for existing extra files in {0}", series.Path);
+            _logger.Debug("Looking for existing extra files in {0}", movie.Path);
 
             var extraFiles = new List<OtherExtraFile>();
-            var filterResult = FilterAndClean(series, filesOnDisk, importedFiles);
+            var filterResult = FilterAndClean(movie, filesOnDisk, importedFiles);
 
             foreach (var possibleExtraFile in filterResult.FilesOnDisk)
             {
-                var localEpisode = _parsingService.GetLocalEpisode(possibleExtraFile, series);
+                var extension = Path.GetExtension(possibleExtraFile);
 
-                if (localEpisode == null)
+                if (extension.IsNullOrWhiteSpace())
+                {
+                    _logger.Debug("No extension for file: {0}", possibleExtraFile);
+                    continue;
+                }
+
+                var minimalInfo = _parsingService.ParseMinimalPathMovieInfo(possibleExtraFile);
+
+                if (minimalInfo == null)
                 {
                     _logger.Debug("Unable to parse extra file: {0}", possibleExtraFile);
                     continue;
                 }
 
-                if (localEpisode.Episodes.Empty())
-                {
-                    _logger.Debug("Cannot find related episodes for: {0}", possibleExtraFile);
-                    continue;
-                }
-
-                if (localEpisode.Episodes.DistinctBy(e => e.EpisodeFileId).Count() > 1)
-                {
-                    _logger.Debug("Extra file: {0} does not match existing files.", possibleExtraFile);
-                    continue;
-                }
-
                 var extraFile = new OtherExtraFile
                 {
-                    SeriesId = series.Id,
-                    SeasonNumber = localEpisode.SeasonNumber,
-                    EpisodeFileId = localEpisode.Episodes.First().EpisodeFileId,
-                    RelativePath = series.Path.GetRelativePath(possibleExtraFile),
-                    Extension = Path.GetExtension(possibleExtraFile)
+                    MovieId = movie.Id,
+                    MovieFileId = movie.MovieFileId,
+                    RelativePath = movie.Path.GetRelativePath(possibleExtraFile),
+                    Extension = extension
                 };
 
                 extraFiles.Add(extraFile);

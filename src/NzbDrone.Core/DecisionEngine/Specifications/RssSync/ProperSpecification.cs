@@ -20,18 +20,23 @@ namespace NzbDrone.Core.DecisionEngine.Specifications.RssSync
             _logger = logger;
         }
 
-        public RejectionType Type { get { return RejectionType.Permanent; } }
+        public RejectionType Type => RejectionType.Permanent;
 
-        public virtual Decision IsSatisfiedBy(RemoteEpisode subject, SearchCriteriaBase searchCriteria)
+        public virtual Decision IsSatisfiedBy(RemoteMovie subject, SearchCriteriaBase searchCriteria)
         {
             if (searchCriteria != null)
             {
                 return Decision.Accept();
             }
 
-            foreach (var file in subject.Episodes.Where(c => c.EpisodeFileId != 0).Select(c => c.EpisodeFile.Value))
+            if (subject.Movie.MovieFile == null)
             {
-                if (_qualityUpgradableSpecification.IsRevisionUpgrade(file.Quality, subject.ParsedEpisodeInfo.Quality))
+                return Decision.Accept();
+            }
+
+            var file = subject.Movie.MovieFile;
+
+                if (_qualityUpgradableSpecification.IsRevisionUpgrade(file.Quality, subject.ParsedMovieInfo.Quality))
                 {
                     if (file.DateAdded < DateTime.Today.AddDays(-7))
                     {
@@ -45,7 +50,7 @@ namespace NzbDrone.Core.DecisionEngine.Specifications.RssSync
                         return Decision.Reject("Proper downloading is disabled");
                     }
                 }
-            }
+            
 
             return Decision.Accept();
         }

@@ -27,18 +27,18 @@ namespace NzbDrone.Api.Authentication
             _configFileProvider = configFileProvider;
         }
 
-        public int Order { get { return 10; } }
+        public int Order => 10;
 
         public void Register(IPipelines pipelines)
         {
             if (_configFileProvider.AuthenticationMethod == AuthenticationType.Forms)
             {
-                RegisterFormsAuth(pipelines);                
+                RegisterFormsAuth(pipelines);
             }
 
             else if (_configFileProvider.AuthenticationMethod == AuthenticationType.Basic)
             {
-                pipelines.EnableBasicAuthentication(new BasicAuthenticationConfiguration(_authenticationService, "Sonarr"));                
+                pipelines.EnableBasicAuthentication(new BasicAuthenticationConfiguration(_authenticationService, "Radarr"));
             }
 
             pipelines.BeforeRequest.AddItemToEndOfPipeline((Func<NancyContext, Response>) RequiresAuthentication);
@@ -64,10 +64,13 @@ namespace NzbDrone.Api.Authentication
                     new DefaultHmacProvider(new PassphraseKeyGenerator(_configService.HmacPassphrase, Encoding.ASCII.GetBytes(_configService.HmacSalt)))
                 );
 
+            FormsAuthentication.FormsAuthenticationCookieName = "_ncfaradarr"; //For those people that both have sonarr and radarr.
+
             FormsAuthentication.Enable(pipelines, new FormsAuthenticationConfiguration
             {
                 RedirectUrl = _configFileProvider.UrlBase + "/login",
                 UserMapper = _authenticationService,
+                Path = _configFileProvider.UrlBase,
                 CryptographyConfiguration = cryptographyConfiguration
             });
         }

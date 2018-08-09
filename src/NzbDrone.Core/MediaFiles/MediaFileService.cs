@@ -4,99 +4,105 @@ using System.Linq;
 using NLog;
 using NzbDrone.Core.MediaFiles.Events;
 using NzbDrone.Core.Messaging.Events;
-using NzbDrone.Core.Tv;
-using NzbDrone.Core.Tv.Events;
+using NzbDrone.Core.Movies;
+using NzbDrone.Core.Movies.Events;
 using NzbDrone.Common;
+using System;
 
 namespace NzbDrone.Core.MediaFiles
 {
     public interface IMediaFileService
     {
-        EpisodeFile Add(EpisodeFile episodeFile);
-        void Update(EpisodeFile episodeFile);
-        void Delete(EpisodeFile episodeFile, DeleteMediaFileReason reason);
-        List<EpisodeFile> GetFilesBySeries(int seriesId);
-        List<EpisodeFile> GetFilesBySeason(int seriesId, int seasonNumber);
-        List<EpisodeFile> GetFilesWithoutMediaInfo();
-        List<string> FilterExistingFiles(List<string> files, Series series);
-        EpisodeFile Get(int id);
-        List<EpisodeFile> Get(IEnumerable<int> ids);
-
+        MovieFile Add(MovieFile movieFile);
+        void Update(MovieFile movieFile);
+        void Delete(MovieFile movieFile, DeleteMediaFileReason reason);
+        List<MovieFile> GetFilesByMovie(int movieId);
+        List<MovieFile> GetFilesWithoutMediaInfo();
+        List<string> FilterExistingFiles(List<string> files, Movie movie);
+        MovieFile GetMovie(int id);
+        List<MovieFile> GetMovies(IEnumerable<int> ids);
     }
 
-    public class MediaFileService : IMediaFileService, IHandleAsync<SeriesDeletedEvent>
+    public class MediaFileService : IMediaFileService, IHandleAsync<MovieDeletedEvent>
     {
         private readonly IEventAggregator _eventAggregator;
         private readonly IMediaFileRepository _mediaFileRepository;
+        private readonly IMovieService _movieService;
         private readonly Logger _logger;
 
-        public MediaFileService(IMediaFileRepository mediaFileRepository, IEventAggregator eventAggregator, Logger logger)
+        public MediaFileService(IMediaFileRepository mediaFileRepository, IMovieService movieService,
+                                IEventAggregator eventAggregator, Logger logger)
         {
             _mediaFileRepository = mediaFileRepository;
             _eventAggregator = eventAggregator;
+            _movieService = movieService;
             _logger = logger;
         }
 
-        public EpisodeFile Add(EpisodeFile episodeFile)
+        public MovieFile Add(MovieFile movieFile)
         {
-            var addedFile = _mediaFileRepository.Insert(episodeFile);
-            _eventAggregator.PublishEvent(new EpisodeFileAddedEvent(addedFile));
+            var addedFile = _mediaFileRepository.Insert(movieFile);
+            addedFile.Movie.LazyLoad();
+            if (addedFile.Movie == null || addedFile.Movie.Value == null)
+            {
+                _logger.Error("Movie is null for the file {0}. Please run the houskeeping command to ensure movies and files are linked correctly.");
+            }
+            //_movieService.SetFileId(addedFile.Movie.Value, addedFile); //Should not be necessary, but sometimes below fails?
+            _eventAggregator.PublishEvent(new MovieFileAddedEvent(addedFile));
+
             return addedFile;
         }
 
-        public void Update(EpisodeFile episodeFile)
+        public void Update(MovieFile movieFile)
         {
-            _mediaFileRepository.Update(episodeFile);
+            _mediaFileRepository.Update(movieFile);
         }
 
-        public void Delete(EpisodeFile episodeFile, DeleteMediaFileReason reason)
+        public void Delete(MovieFile movieFile, DeleteMediaFileReason reason)
         {
-            //Little hack so we have the episodes and series attached for the event consumers
-            episodeFile.Episodes.LazyLoad();
-            episodeFile.Path = Path.Combine(episodeFile.Series.Value.Path, episodeFile.RelativePath);
+            //Little hack so we have the movie attached for the event consumers
+            movieFile.Movie.LazyLoad();
+            movieFile.Path = Path.Combine(movieFile.Movie.Value.Path, movieFile.RelativePath);
 
-            _mediaFileRepository.Delete(episodeFile);
-            _eventAggregator.PublishEvent(new EpisodeFileDeletedEvent(episodeFile, reason));
+            _mediaFileRepository.Delete(movieFile);
+            _eventAggregator.PublishEvent(new MovieFileDeletedEvent(movieFile, reason));
         }
 
-        public List<EpisodeFile> GetFilesBySeries(int seriesId)
+        public List<MovieFile> GetFilesByMovie(int movieId)
         {
-            return _mediaFileRepository.GetFilesBySeries(seriesId);
+            return _mediaFileRepository.GetFilesByMovie(movieId);
         }
 
-        public List<EpisodeFile> GetFilesBySeason(int seriesId, int seasonNumber)
-        {
-            return _mediaFileRepository.GetFilesBySeason(seriesId, seasonNumber);
-        }
-
-        public List<EpisodeFile> GetFilesWithoutMediaInfo()
+        public List<MovieFile> GetFilesWithoutMediaInfo()
         {
             return _mediaFileRepository.GetFilesWithoutMediaInfo();
         }
 
-        public List<string> FilterExistingFiles(List<string> files, Series series)
+        public List<string> FilterExistingFiles(List<string> files, Movie movie)
         {
-            var seriesFiles = GetFilesBySeries(series.Id).Select(f => Path.Combine(series.Path, f.RelativePath)).ToList();
+            var movieFiles = GetFilesByMovie(movie.Id).Select(f => Path.Combine(movie.Path, f.RelativePath)).ToList();
 
-            if (!seriesFiles.Any()) return files;
+            if (!movieFiles.Any()) return files;
 
-            return files.Except(seriesFiles, PathEqualityComparer.Instance).ToList();
+            return files.Except(movieFiles, PathEqualityComparer.Instance).ToList();
         }
 
-        public EpisodeFile Get(int id)
-        {
-            return _mediaFileRepository.Get(id);
-        }
-
-        public List<EpisodeFile> Get(IEnumerable<int> ids)
+        public List<MovieFile> GetMovies(IEnumerable<int> ids)
         {
             return _mediaFileRepository.Get(ids).ToList();
         }
 
-        public void HandleAsync(SeriesDeletedEvent message)
+        public MovieFile GetMovie(int id)
         {
-            var files = GetFilesBySeries(message.Series.Id);
+            return _mediaFileRepository.Get(id);
+        }
+
+        public void HandleAsync(MovieDeletedEvent message)
+        {
+
+            var files = GetFilesByMovie(message.Movie.Id);
             _mediaFileRepository.DeleteMany(files);
+
         }
     }
 }

@@ -1,8 +1,8 @@
 using NLog;
 using NzbDrone.Core.Blacklisting;
-using NzbDrone.Core.Indexers;
 using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Parser.Model;
+using System;
 
 namespace NzbDrone.Core.DecisionEngine.Specifications
 {
@@ -17,11 +17,12 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
             _logger = logger;
         }
 
-        public RejectionType Type { get { return RejectionType.Permanent; } }
+        public RejectionType Type => RejectionType.Permanent;
 
-        public Decision IsSatisfiedBy(RemoteEpisode subject, SearchCriteriaBase searchCriteria)
-        {          
-            if (_blacklistService.Blacklisted(subject.Series.Id, subject.Release))
+        public Decision IsSatisfiedBy(RemoteMovie subject, SearchCriteriaBase searchCriteria)
+        {
+
+            if (_blacklistService.Blacklisted(subject.Movie.Id, subject.Release))
             {
                 _logger.Debug("{0} is blacklisted, rejecting.", subject.Release.Title);
                 return Decision.Reject("Release is blacklisted");

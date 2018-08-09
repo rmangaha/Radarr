@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Threading;
 using Nancy;
 using Nancy.Bootstrapper;
@@ -23,7 +22,7 @@ namespace NzbDrone.Api.Extensions.Pipelines
             _errorPipeline = errorPipeline;
         }
 
-        public int Order { get { return 100; } }
+        public int Order => 100;
 
         public void Register(IPipelines pipelines)
         {
@@ -67,13 +66,9 @@ namespace NzbDrone.Api.Extensions.Pipelines
         private Response LogError(NancyContext context, Exception exception)
         {
             var response = _errorPipeline.HandleException(context, exception);
-
             context.Response = response;
-
             LogEnd(context);
-
             context.Response = null;
-
             return response;
         }
 
@@ -81,12 +76,9 @@ namespace NzbDrone.Api.Extensions.Pipelines
         {
             if (request.Url.Query.IsNotNullOrWhiteSpace())
             {
-                return string.Concat(request.Url.Path, "?", request.Url.Query);
+                return string.Concat(request.Url.Path, request.Url.Query);
             }
-            else
-            {
-                return request.Url.Path;
-            }
+            return request.Url.Path;
         }
     }
 }

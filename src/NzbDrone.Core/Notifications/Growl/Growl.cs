@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using FluentValidation.Results;
 using NzbDrone.Common.Extensions;
-using NzbDrone.Core.Tv;
+using NzbDrone.Core.Movies;
 
 namespace NzbDrone.Core.Notifications.Growl
 {
@@ -14,44 +14,29 @@ namespace NzbDrone.Core.Notifications.Growl
             _growlService = growlService;
         }
 
-        public override string Link
-        {
-            get { return "http://growl.info/"; }
-        }
+        public override string Link => "http://growl.info/";
 
         public override void OnGrab(GrabMessage grabMessage)
         {
-            const string title = "Episode Grabbed";
+            const string title = "Movie Grabbed";
 
             _growlService.SendNotification(title, grabMessage.Message, "GRAB", Settings.Host, Settings.Port, Settings.Password);
         }
 
         public override void OnDownload(DownloadMessage message)
         {
-            const string title = "Episode Downloaded";
+            const string title = "Movie Downloaded";
 
             _growlService.SendNotification(title, message.Message, "DOWNLOAD", Settings.Host, Settings.Port, Settings.Password);
         }
 
-        public override void OnRename(Series series)
+        public override void OnMovieRename(Movie movie)
         {
         }
+		
+        public override string Name => "Growl";
 
-        public override string Name
-        {
-            get
-            {
-                return "Growl";
-            }
-        }
-
-        public override bool SupportsOnRename
-        {
-            get
-            {
-                return false;
-            }
-        }
+        public override bool SupportsOnRename => false;
 
         public override ValidationResult Test()
         {

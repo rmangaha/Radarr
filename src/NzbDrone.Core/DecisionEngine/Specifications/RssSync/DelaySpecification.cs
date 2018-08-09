@@ -26,9 +26,9 @@ namespace NzbDrone.Core.DecisionEngine.Specifications.RssSync
             _logger = logger;
         }
 
-        public RejectionType Type { get { return RejectionType.Temporary; } }
+        public RejectionType Type => RejectionType.Temporary;
 
-        public virtual Decision IsSatisfiedBy(RemoteEpisode subject, SearchCriteriaBase searchCriteria)
+        public virtual Decision IsSatisfiedBy(RemoteMovie subject, SearchCriteriaBase searchCriteria)
         {
             if (searchCriteria != null && searchCriteria.UserInvokedSearch)
             {
@@ -36,10 +36,25 @@ namespace NzbDrone.Core.DecisionEngine.Specifications.RssSync
                 return Decision.Accept();
             }
 
-            var profile = subject.Series.Profile.Value;
-            var delayProfile = _delayProfileService.BestForTags(subject.Series.Tags);
+            var profile = subject.Movie.Profile.Value;
+            var delayProfile = _delayProfileService.BestForTags(subject.Movie.Tags);
             var delay = delayProfile.GetProtocolDelay(subject.Release.DownloadProtocol);
             var isPreferredProtocol = subject.Release.DownloadProtocol == delayProfile.PreferredProtocol;
+
+            // Preferred word count 
+            var title = subject.Release.Title;
+            var preferredWords = subject.Movie.Profile?.Value?.PreferredTags;
+            var preferredCount = 0;
+
+            if (preferredWords == null)
+            {
+                preferredCount = 1;
+                _logger.Debug("Preferred words is null, setting preffered count to 1.");
+            }
+            else
+            {
+                preferredCount = preferredWords.AsEnumerable().Count(w => title.ToLower().Contains(w.ToLower()));
+            }
 
             if (delay == 0)
             {
@@ -49,38 +64,35 @@ namespace NzbDrone.Core.DecisionEngine.Specifications.RssSync
 
             var comparer = new QualityModelComparer(profile);
 
-            if (isPreferredProtocol)
+            if (isPreferredProtocol && (subject.Movie.MovieFileId != 0 && subject.Movie.MovieFile != null) && (preferredCount > 0 || preferredWords == null))
             {
-                foreach (var file in subject.Episodes.Where(c => c.EpisodeFileId != 0).Select(c => c.EpisodeFile.Value))
-                {
-                    var upgradable = _qualityUpgradableSpecification.IsUpgradable(profile, file.Quality, subject.ParsedEpisodeInfo.Quality);
+                    var upgradable = _qualityUpgradableSpecification.IsUpgradable(profile, subject.Movie.MovieFile.Quality, subject.ParsedMovieInfo.Quality);
 
                     if (upgradable)
                     {
-                        var revisionUpgrade = _qualityUpgradableSpecification.IsRevisionUpgrade(file.Quality, subject.ParsedEpisodeInfo.Quality);
+                        var revisionUpgrade = _qualityUpgradableSpecification.IsRevisionUpgrade(subject.Movie.MovieFile.Quality, subject.ParsedMovieInfo.Quality);
 
                         if (revisionUpgrade)
                         {
-                            _logger.Debug("New quality is a better revision for existing quality, skipping delay");
+                            _logger.Debug("New quality is a better revision for existing quality and preferred word count is {0}, skipping delay", preferredCount);
                             return Decision.Accept();
                         }
                     }
-                }
+                
             }
 
             // If quality meets or exceeds the best allowed quality in the profile accept it immediately
             var bestQualityInProfile = new QualityModel(profile.LastAllowedQuality());
-            var isBestInProfile = comparer.Compare(subject.ParsedEpisodeInfo.Quality, bestQualityInProfile) >= 0;
+            var isBestInProfile = comparer.Compare(subject.ParsedMovieInfo.Quality, bestQualityInProfile) >= 0;
 
-            if (isBestInProfile && isPreferredProtocol)
+            if (isBestInProfile && isPreferredProtocol && (preferredCount > 0  || preferredWords == null))
             {
-                _logger.Debug("Quality is highest in profile for preferred protocol, will not delay");
+                _logger.Debug("Quality is highest in profile for preferred protocol and preferred word count is {0}, will not delay.", preferredCount);
                 return Decision.Accept();
             }
 
-            var episodeIds = subject.Episodes.Select(e => e.Id);
-
-            var oldest = _pendingReleaseService.OldestPendingRelease(subject.Series.Id, episodeIds);
+            
+            var oldest = _pendingReleaseService.OldestPendingRelease(subject.Movie.Id);
 
             if (oldest != null && oldest.Release.AgeMinutes > delay)
             {

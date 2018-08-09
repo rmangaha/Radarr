@@ -1,8 +1,7 @@
-﻿using System;
-using System.Linq;
-using System.Net;
+using System;
 using FluentValidation.Results;
 using NLog;
+using NzbDrone.Common.Extensions;
 using RestSharp;
 using NzbDrone.Core.Rest;
 using NzbDrone.Common.Serializer;
@@ -43,7 +42,7 @@ namespace NzbDrone.Core.Notifications.Join
         public ValidationFailure Test(JoinSettings settings)
         {
             const string title = "Test Notification";
-            const string body = "This is a test message from Sonarr.";
+            const string body = "This is a test message from Radarr.";
 
             try
             {
@@ -77,7 +76,11 @@ namespace NzbDrone.Core.Notifications.Join
 
             var client = RestClientFactory.BuildClient(URL);
 
-            if (!string.IsNullOrEmpty(settings.DeviceIds))
+            if (settings.DeviceNames.IsNotNullOrWhiteSpace())
+            {
+                request.AddParameter("deviceNames", settings.DeviceNames);
+            }
+            else if (settings.DeviceIds.IsNotNullOrWhiteSpace())
             {
                 request.AddParameter("deviceIds", settings.DeviceIds);
             }
@@ -89,7 +92,7 @@ namespace NzbDrone.Core.Notifications.Join
             request.AddParameter("apikey", settings.ApiKey);
             request.AddParameter("title", title);
             request.AddParameter("text", message);
-            request.AddParameter("icon", "https://cdn.rawgit.com/Sonarr/Sonarr/develop/Logo/256.png"); // Use the Sonarr logo.
+            request.AddParameter("icon", "https://cdn.rawgit.com/Radarr/Radarr/develop/Logo/256.png"); // Use the Radarr logo.
 
             var response = client.ExecuteAndValidate(request);
             var res = Json.Deserialize<JoinResponseModel>(response.Content);

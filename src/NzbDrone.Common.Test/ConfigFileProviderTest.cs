@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.IO;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
@@ -50,7 +49,7 @@ namespace NzbDrone.Common.Test
         public void GetValue_Success()
         {
             const string key = "Port";
-            const string value = "8989";
+            const string value = "7878";
 
             var result = Subject.GetValue(key, value);
 
@@ -61,7 +60,7 @@ namespace NzbDrone.Common.Test
         public void GetInt_Success()
         {
             const string key = "Port";
-            const int value = 8989;
+            const int value = 7878;
 
 
             var result = Subject.GetValueInt(key, value);
@@ -96,7 +95,7 @@ namespace NzbDrone.Common.Test
         [Test]
         public void GetPort_Success()
         {
-            const int value = 8989;
+            const int value = 7878;
 
 
             var result = Subject.Port;

@@ -4,12 +4,13 @@ using System.Linq;
 using NLog;
 using NzbDrone.Common.Processes;
 
-namespace NzbDrone.Host
+namespace Radarr.Host
 {
     public interface ISingleInstancePolicy
     {
         void PreventStartIfAlreadyRunning();
         void KillAllOtherInstance();
+        void WarnIfAlreadyRunning();
     }
 
     public class SingleInstancePolicy : ISingleInstancePolicy
@@ -31,7 +32,7 @@ namespace NzbDrone.Host
         {
             if (IsAlreadyRunning())
             {
-                _logger.Warn("Another instance of Sonarr is already running.");
+                _logger.Warn("Another instance of Radarr is already running.");
                 _browserService.LaunchWebUI();
                 throw new TerminateApplicationException("Another instance is already running");
             }
@@ -42,6 +43,14 @@ namespace NzbDrone.Host
             foreach (var processId in GetOtherNzbDroneProcessIds())
             {
                 _processProvider.Kill(processId);
+            }
+        }
+
+        public void WarnIfAlreadyRunning()
+        {
+            if (IsAlreadyRunning())
+            {
+                _logger.Debug("Another instance of Radarr is already running.");
             }
         }
 
@@ -64,14 +73,14 @@ namespace NzbDrone.Host
 
                 if (otherProcesses.Any())
                 {
-                    _logger.Info("{0} instance(s) of Sonarr are running", otherProcesses.Count);
+                    _logger.Info("{0} instance(s) of Radarr are running", otherProcesses.Count);
                 }
 
                 return otherProcesses;
             }
             catch (Exception ex)
             {
-                _logger.Warn(ex, "Failed to check for multiple instances of Sonarr.");
+                _logger.Warn(ex, "Failed to check for multiple instances of Radarr.");
                 return new List<int>();
             }
         }

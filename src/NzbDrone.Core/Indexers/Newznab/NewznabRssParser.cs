@@ -1,9 +1,13 @@
-﻿using System;
+using System;
+using System.Globalization;
 using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Indexers.Exceptions;
 using NzbDrone.Core.Parser.Model;
+using RestSharp.Extensions;
 
 namespace NzbDrone.Core.Indexers.Newznab
 {
@@ -11,9 +15,12 @@ namespace NzbDrone.Core.Indexers.Newznab
     {
         public const string ns = "{http://www.newznab.com/DTD/2010/feeds/attributes/}";
 
-        public NewznabRssParser()
+        private readonly NewznabSettings _settings;
+
+        public NewznabRssParser(NewznabSettings settings)
         {
             PreferredEnclosureMimeType = "application/x-nzb";
+            _settings = settings;
         }
 
         protected override bool PreProcess(IndexerResponse indexerResponse)
@@ -48,9 +55,24 @@ namespace NzbDrone.Core.Indexers.Newznab
         protected override ReleaseInfo ProcessItem(XElement item, ReleaseInfo releaseInfo)
         {
             releaseInfo = base.ProcessItem(item, releaseInfo);
+            releaseInfo.ImdbId = GetImdbId(item);
 
-            releaseInfo.TvdbId = GetTvdbId(item);
-            releaseInfo.TvRageId = GetTvRageId(item);
+
+            //// This shouldn't be needed with changes to the DownloadDecisionMaker
+            //var imdbMovieTitle = GetImdbTitle(item);
+            //var imdbYear = GetImdbYear(item);
+
+            //// Fun, lets try to add year to the releaseTitle for our foriegn friends :)
+            //// if (!releaseInfo.Title.ContainsIgnoreCase(imdbMovieTitle + "." + imdbYear))
+            //var isMatch = Regex.IsMatch(releaseInfo.Title, $@"^{imdbMovieTitle}.*{imdbYear}", RegexOptions.IgnoreCase);
+            //if (!isMatch)
+            //{
+            //    if (imdbYear != 1900 && imdbMovieTitle != string.Empty)
+            //    {
+            //        // releaseInfo.Title = releaseInfo.Title.Replace(imdbMovieTitle, imdbMovieTitle + "." + imdbYear);
+            //        releaseInfo.Title = Regex.Replace(releaseInfo.Title, imdbMovieTitle, imdbMovieTitle + "." + imdbYear, RegexOptions.IgnoreCase);
+            //    }
+            //}
 
             return releaseInfo;
         }
@@ -114,30 +136,45 @@ namespace NzbDrone.Core.Indexers.Newznab
             return url;
         }
 
-        protected virtual int GetTvdbId(XElement item)
+        protected virtual int GetImdbId(XElement item)
         {
-            var tvdbIdString = TryGetNewznabAttribute(item, "tvdbid");
-            int tvdbId;
+            var imdbIdString = TryGetNewznabAttribute(item, "imdb");
+            int imdbId;
 
-            if (!tvdbIdString.IsNullOrWhiteSpace() && int.TryParse(tvdbIdString, out tvdbId))
+            if (!imdbIdString.IsNullOrWhiteSpace() && int.TryParse(imdbIdString, out imdbId))
             {
-                return tvdbId;
+                return imdbId;
             }
 
             return 0;
         }
 
-        protected virtual int GetTvRageId(XElement item)
+        protected virtual string GetImdbTitle(XElement item)
         {
-            var tvRageIdString = TryGetNewznabAttribute(item, "rageid");
-            int tvRageId;
-
-            if (!tvRageIdString.IsNullOrWhiteSpace() && int.TryParse(tvRageIdString, out tvRageId))
+            var imdbTitle = TryGetNewznabAttribute(item, "imdbtitle");
+            if (!imdbTitle.IsNullOrWhiteSpace())
             {
-                return tvRageId;
+                return CultureInfo.CurrentCulture.TextInfo.ToTitleCase(
+                    Parser.Parser.ReplaceGermanUmlauts(
+                        Parser.Parser.NormalizeTitle(imdbTitle).Replace(" ", ".")
+                    )
+                 );
             }
 
-            return 0;
+            return string.Empty;
+        }
+
+        protected virtual int GetImdbYear(XElement item)
+        {
+            var imdbYearString = TryGetNewznabAttribute(item, "imdbyear");
+            int imdbYear;
+
+            if (!imdbYearString.IsNullOrWhiteSpace() && int.TryParse(imdbYearString, out imdbYear))
+            {
+                return imdbYear;
+            }
+
+            return 1900;
         }
 
         protected string TryGetNewznabAttribute(XElement item, string key, string defaultValue = "")

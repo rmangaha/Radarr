@@ -7,7 +7,8 @@ var EditProfileItemView = require('./EditProfileItemView');
 var QualitySortableCollectionView = require('./QualitySortableCollectionView');
 var EditProfileView = require('./EditProfileView');
 var DeleteView = require('../DeleteProfileView');
-var SeriesCollection = require('../../../Series/SeriesCollection');
+var FullMovieCollection = require('../../../Movies/FullMovieCollection');
+var NetImportCollection = require('../../NetImport/NetImportCollection');
 var Config = require('../../../Config');
 var AsEditModalView = require('../../../Mixins/AsEditModalView');
 
@@ -16,7 +17,8 @@ var view = Marionette.Layout.extend({
 
     regions : {
         fields    : '#x-fields',
-        qualities : '#x-qualities'
+        qualities : '#x-qualities',
+        formats   : '#x-formats'
     },
 
     ui : {
@@ -28,7 +30,11 @@ var view = Marionette.Layout.extend({
     initialize : function(options) {
         this.profileCollection = options.profileCollection;
         this.itemsCollection = new Backbone.Collection(_.toArray(this.model.get('items')).reverse());
-        this.listenTo(SeriesCollection, 'all', this._updateDisableStatus);
+        this.netImportCollection = new NetImportCollection;
+        this.netImportCollection.fetch();
+        this.formatItemsCollection = new Backbone.Collection(_.toArray(this.model.get('formatItems')).reverse());
+        this.listenTo(FullMovieCollection, 'all', this._updateDisableStatus);
+        this.listenTo(this.netImportCollection, 'all', this._updateDisableStatus);
     },
 
     onRender : function() {
@@ -52,7 +58,12 @@ var view = Marionette.Layout.extend({
             },
 
             visibleModelsFilter : function(model) {
-                return model.get('quality').id !== 0 || advancedShown;
+                var quality = model.get('quality');
+                if (quality) {
+                    return quality.id !== 0 || advancedShown;
+                }
+
+                return true;
             },
 
             collection : this.itemsCollection,
@@ -64,8 +75,41 @@ var view = Marionette.Layout.extend({
         }));
         this.qualities.show(this.sortableListView);
 
+        this.sortableFormatListView = new QualitySortableCollectionView({
+            selectable     : true,
+            selectMultiple : true,
+            clickToSelect  : true,
+            clickToToggle  : true,
+            sortable       : advancedShown,
+
+            sortableOptions : {
+                handle : '.x-drag-handle'
+            },
+
+            visibleModelsFilter : function(model) {
+                var quality = model.get('format');
+                console.log(quality);
+                if (quality) {
+                    console.log(quality);
+                    return quality.id !== 0 || advancedShown;
+                }
+
+                return true;
+            },
+
+            collection : this.formatItemsCollection,
+            model      : this.model
+        });
+        this.sortableFormatListView.setSelectedModels(this.formatItemsCollection.filter(function(item) {
+            return item.get('allowed') === true;
+        }));
+        this.formats.show(this.sortableFormatListView);
+
         this.listenTo(this.sortableListView, 'selectionChanged', this._selectionChanged);
         this.listenTo(this.sortableListView, 'sortStop', this._updateModel);
+
+        this.listenTo(this.sortableFormatListView, 'selectionChanged', this._selectionChanged);
+        this.listenTo(this.sortableFormatListView, 'sortStop', this._updateModel);
     },
 
     _onBeforeSave : function() {
@@ -93,6 +137,7 @@ var view = Marionette.Layout.extend({
 
     _updateModel : function() {
         this.model.set('items', this.itemsCollection.toJSON().reverse());
+        this.model.set('formatItems', this.formatItemsCollection.toJSON().reverse());
 
         this._showFieldsView();
     },
@@ -102,16 +147,21 @@ var view = Marionette.Layout.extend({
     },
 
     _updateDisableStatus : function() {
-        if (this._isQualityInUse()) {
+        if (this._isQualityInUse() || this._isQualityInUsebyList()) {
+            this.ui.deleteButton.attr('disabled', 'disabled');
             this.ui.deleteButton.addClass('disabled');
-            this.ui.deleteButton.attr('title', 'Can\'t delete a profile that is attached to a series.');
+            this.ui.deleteButton.attr('title', 'Can\'t delete a profile that is attached to a movie or list.');
         } else {
             this.ui.deleteButton.removeClass('disabled');
         }
     },
 
     _isQualityInUse : function() {
-        return SeriesCollection.where({ 'profileId' : this.model.id }).length !== 0;
+        return FullMovieCollection.where({ 'profileId' : this.model.id }).length !== 0;
+    },
+
+    _isQualityInUsebyList : function() {
+        return this.netImportCollection.where({ 'profileId' : this.model.id }).length !== 0;
     }
 });
 module.exports = AsEditModalView.call(view);

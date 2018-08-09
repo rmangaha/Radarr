@@ -1,6 +1,6 @@
-﻿using System.Collections.Generic;
+﻿﻿using System.Collections.Generic;
 using System.Linq;
-using NzbDrone.Core.MediaFiles.EpisodeImport.Manual;
+using NzbDrone.Core.MediaFiles.MovieImport.Manual;
 using NzbDrone.Core.Qualities;
 
 namespace NzbDrone.Api.ManualImport
@@ -36,7 +36,7 @@ namespace NzbDrone.Api.ManualImport
                 item.QualityWeight += item.Quality.Revision.Real * 10;
                 item.QualityWeight += item.Quality.Revision.Version;
             }
-           
+
             return item;
         }
     }

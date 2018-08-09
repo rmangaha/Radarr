@@ -3,7 +3,6 @@ using FluentValidation;
 using NzbDrone.Core.Annotations;
 using NzbDrone.Core.ThingiProvider;
 using NzbDrone.Core.Validation;
-using NzbDrone.Core.Validation.Paths;
 
 namespace NzbDrone.Core.Notifications.Webhook
 {
@@ -29,6 +28,12 @@ namespace NzbDrone.Core.Notifications.Webhook
 
         [FieldDefinition(1, Label = "Method", Type = FieldType.Select, SelectOptions = typeof(WebhookMethod), HelpText = "Which HTTP method to use submit to the Webservice")]
         public int Method { get; set; }
+
+        [FieldDefinition(2, Label = "Username")]
+        public string Username { get; set; }
+
+        [FieldDefinition(3, Label = "Password", Type = FieldType.Password)]
+        public string Password { get; set; }
 
         public NzbDroneValidationResult Validate()
         {

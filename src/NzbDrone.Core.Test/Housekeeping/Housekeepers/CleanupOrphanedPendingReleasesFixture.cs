@@ -5,7 +5,7 @@ using NzbDrone.Core.Download.Pending;
 using NzbDrone.Core.Housekeeping.Housekeepers;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
-using NzbDrone.Core.Tv;
+using NzbDrone.Core.Movies;
 
 namespace NzbDrone.Core.Test.Housekeeping.Housekeepers
 {
@@ -16,7 +16,7 @@ namespace NzbDrone.Core.Test.Housekeeping.Housekeepers
         public void should_delete_orphaned_pending_items()
         {
             var pendingRelease = Builder<PendingRelease>.CreateNew()
-                .With(h => h.ParsedEpisodeInfo = new ParsedEpisodeInfo())
+                .With(h => h.ParsedMovieInfo = new ParsedMovieInfo())
                 .With(h => h.Release = new ReleaseInfo())
                 .BuildNew();
 
@@ -28,13 +28,13 @@ namespace NzbDrone.Core.Test.Housekeeping.Housekeepers
         [Test]
         public void should_not_delete_unorphaned_pending_items()
         {
-            var series = Builder<Series>.CreateNew().BuildNew();
+            var series = Builder<Movie>.CreateNew().BuildNew();
 
             Db.Insert(series);
 
             var pendingRelease = Builder<PendingRelease>.CreateNew()
-                .With(h => h.SeriesId = series.Id)
-                .With(h => h.ParsedEpisodeInfo = new ParsedEpisodeInfo())
+                .With(h => h.MovieId = series.Id)
+                .With(h => h.ParsedMovieInfo = new ParsedMovieInfo())
                 .With(h => h.Release = new ReleaseInfo())
                 .BuildNew();
 

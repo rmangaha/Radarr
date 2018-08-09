@@ -1,9 +1,14 @@
-﻿using Nancy;
+using Nancy;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using DDay.iCal;
-using NzbDrone.Core.Tv;
+using Ical.Net;
+using Ical.Net.DataTypes;
+using Ical.Net.General;
+using Ical.Net.Interfaces.Serialization;
+using Ical.Net.Serialization;
+using Ical.Net.Serialization.iCalendar.Factory;
+using NzbDrone.Core.Movies;
 using Nancy.Responses;
 using NzbDrone.Core.Tags;
 using NzbDrone.Common.Extensions;
@@ -12,16 +17,18 @@ namespace NzbDrone.Api.Calendar
 {
     public class CalendarFeedModule : NzbDroneFeedModule
     {
-        private readonly IEpisodeService _episodeService;
+        private readonly IMovieService _movieService;
         private readonly ITagService _tagService;
 
-        public CalendarFeedModule(IEpisodeService episodeService, ITagService tagService)
+        public CalendarFeedModule(IMovieService movieService, ITagService tagService)
             : base("calendar")
         {
-            _episodeService = episodeService;
+            _movieService = movieService;
             _tagService = tagService;
 
             Get["/NzbDrone.ics"] = options => GetCalendarFeed();
+            Get["/Sonarr.ics"] = options => GetCalendarFeed();
+            Get["/Radarr.ics"] = options => GetCalendarFeed();
         }
 
         private Response GetCalendarFeed()
@@ -31,7 +38,7 @@ namespace NzbDrone.Api.Calendar
             var start = DateTime.Today.AddDays(-pastDays);
             var end = DateTime.Today.AddDays(futureDays);
             var unmonitored = false;
-            var premiersOnly = false;
+            //var premiersOnly = false;
             var tags = new List<int>();
 
             // TODO: Remove start/end parameters in v3, they don't work well for iCal
@@ -40,7 +47,7 @@ namespace NzbDrone.Api.Calendar
             var queryPastDays = Request.Query.PastDays;
             var queryFutureDays = Request.Query.FutureDays;
             var queryUnmonitored = Request.Query.Unmonitored;
-            var queryPremiersOnly = Request.Query.PremiersOnly;
+            // var queryPremiersOnly = Request.Query.PremiersOnly;
             var queryTags = Request.Query.Tags;
 
             if (queryStart.HasValue) start = DateTime.Parse(queryStart.Value);
@@ -63,10 +70,10 @@ namespace NzbDrone.Api.Calendar
                 unmonitored = bool.Parse(queryUnmonitored.Value);
             }
 
-            if (queryPremiersOnly.HasValue)
-            {
-                premiersOnly = bool.Parse(queryPremiersOnly.Value);
-            }
+            //if (queryPremiersOnly.HasValue)
+            //{
+            //    premiersOnly = bool.Parse(queryPremiersOnly.Value);
+            //}
 
             if (queryTags.HasValue)
             {
@@ -74,45 +81,57 @@ namespace NzbDrone.Api.Calendar
                 tags.AddRange(tagInput.Split(',').Select(_tagService.GetTag).Select(t => t.Id));
             }
 
-            var episodes = _episodeService.EpisodesBetweenDates(start, end, unmonitored);
-            var icalCalendar = new iCalendar();
-
-            foreach (var episode in episodes.OrderBy(v => v.AirDateUtc.Value))
+            var movies = _movieService.GetMoviesBetweenDates(start, end, unmonitored);
+            var calendar = new Ical.Net.Calendar
             {
-                if (premiersOnly && (episode.SeasonNumber == 0 || episode.EpisodeNumber != 1))
+                ProductId = "-//radarr.video//Radarr//EN"
+            };
+
+            var calendarName = "Radarr Movies Calendar";
+            calendar.AddProperty(new CalendarProperty("NAME", calendarName));
+            calendar.AddProperty(new CalendarProperty("X-WR-CALNAME", calendarName));
+
+            foreach (var movie in movies.OrderBy(v => v.Added))
+            {
+                if (tags.Any() && tags.None(movie.Tags.Contains))
                 {
                     continue;
                 }
 
-                if (tags.Any() && tags.None(episode.Series.Tags.Contains))
-                {
-                    continue;
-                }
+                CreateEvent(calendar, movie, true);
+                CreateEvent(calendar, movie, false);
 
-                var occurrence = icalCalendar.Create<Event>();
-                occurrence.UID = "NzbDrone_episode_" + episode.Id.ToString();
-                occurrence.Status = episode.HasFile ? EventStatus.Confirmed : EventStatus.Tentative;
-                occurrence.Start = new iCalDateTime(episode.AirDateUtc.Value) { HasTime = true };
-                occurrence.End = new iCalDateTime(episode.AirDateUtc.Value.AddMinutes(episode.Series.Runtime)) { HasTime = true };
-                occurrence.Description = episode.Overview;
-                occurrence.Categories = new List<string>() { episode.Series.Network };
-
-                switch (episode.Series.SeriesType)
-                {
-                    case SeriesTypes.Daily:
-                        occurrence.Summary = string.Format("{0} - {1}", episode.Series.Title, episode.Title);
-                        break;
-
-                    default:
-                        occurrence.Summary = string.Format("{0} - {1}x{2:00} - {3}", episode.Series.Title, episode.SeasonNumber, episode.EpisodeNumber, episode.Title);
-                        break;
-                }
             }
 
-            var serializer = new DDay.iCal.Serialization.iCalendar.SerializerFactory().Build(icalCalendar.GetType(), new DDay.iCal.Serialization.SerializationContext()) as DDay.iCal.Serialization.IStringSerializer;
-            var icalendar = serializer.SerializeToString(icalCalendar);
+            var serializer = (IStringSerializer) new SerializerFactory().Build(calendar.GetType(), new SerializationContext());
+            var icalendar = serializer.SerializeToString(calendar);
 
             return new TextResponse(icalendar, "text/calendar");
+        }
+
+        private void CreateEvent(Ical.Net.Calendar calendar, Movie movie, bool cinemasRelease)
+        {
+            var date = cinemasRelease ? movie.InCinemas : movie.PhysicalRelease;
+            if (!date.HasValue)
+            {
+                return;
+            }
+            
+            var occurrence = calendar.Create<Event>();
+            occurrence.Uid = "NzbDrone_movie_" + movie.Id + (cinemasRelease ? "_cinemas" : "_physical");
+            occurrence.Status = movie.Status == MovieStatusType.Announced ? EventStatus.Tentative : EventStatus.Confirmed;
+            
+            occurrence.Start = new CalDateTime(date.Value);
+            occurrence.End = occurrence.Start;
+            occurrence.IsAllDay = true;
+
+            occurrence.Description = movie.Overview;
+            occurrence.Categories = new List<string>() { movie.Studio };
+
+            var physicalText = movie.PhysicalReleaseNote.IsNotNullOrWhiteSpace()
+                ? $"(Physical Release, {movie.PhysicalReleaseNote})"
+                : "(Physical Release)";
+            occurrence.Summary = $"{movie.Title} " + (cinemasRelease ? "(Theatrical Release)" : physicalText);
         }
     }
 }

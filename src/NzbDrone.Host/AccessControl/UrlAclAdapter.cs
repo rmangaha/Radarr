@@ -3,12 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using NLog;
-using NzbDrone.Common;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Configuration;
 
-namespace NzbDrone.Host.AccessControl
+namespace Radarr.Host.AccessControl
 {
     public interface IUrlAclAdapter
     {

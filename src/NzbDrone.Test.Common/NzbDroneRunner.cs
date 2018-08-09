@@ -22,30 +22,30 @@ namespace NzbDrone.Test.Common
         public string AppData { get; private set; }
         public string ApiKey { get; private set; }
 
-        public NzbDroneRunner(Logger logger, int port = 8989)
+        public NzbDroneRunner(Logger logger, int port = 7878)
         {
             _processProvider = new ProcessProvider(logger);
-            _restClient = new RestClient("http://localhost:8989/api");
+            _restClient = new RestClient("http://localhost:7878/api");
         }
 
         public void Start()
         {
             AppData = Path.Combine(TestContext.CurrentContext.TestDirectory, "_intg_" + DateTime.Now.Ticks);
 
-            var nzbdroneConsoleExe = "NzbDrone.Console.exe";
+            var nzbdroneConsoleExe = "Radarr.Console.exe";
 
             if (OsInfo.IsNotWindows)
             {
-                nzbdroneConsoleExe = "NzbDrone.exe";
+                nzbdroneConsoleExe = "Radarr.exe";
             }
 
             if (BuildInfo.IsDebug)
             {
-                Start(Path.Combine(TestContext.CurrentContext.TestDirectory, "..\\..\\..\\..\\..\\_output\\NzbDrone.Console.exe"));
+                Start(Path.Combine(TestContext.CurrentContext.TestDirectory, "..\\..\\..\\..\\..\\_output\\Radarr.Console.exe"));
             }
             else
             {
-                Start(Path.Combine("bin", nzbdroneConsoleExe));
+                Start(Path.Combine(TestContext.CurrentContext.TestDirectory, "bin", nzbdroneConsoleExe));
             }
 
             while (true)
@@ -81,7 +81,7 @@ namespace NzbDrone.Test.Common
         {
             if (_nzbDroneProcess != null)
             {
-                _processProvider.Kill(_nzbDroneProcess.Id);                
+                _processProvider.Kill(_nzbDroneProcess.Id);
             }
 
             _processProvider.KillAll(ProcessProvider.NZB_DRONE_CONSOLE_PROCESS_NAME);

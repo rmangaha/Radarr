@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using FluentValidation.Results;
 using NzbDrone.Common.Extensions;
-using NzbDrone.Core.Tv;
+using NzbDrone.Core.Movies;
 
 namespace NzbDrone.Core.Notifications.Plex
 {
@@ -14,10 +14,7 @@ namespace NzbDrone.Core.Notifications.Plex
             _plexServerService = plexServerService;
         }
 
-        public override string Link
-        {
-            get { return "http://www.plexapp.com/"; }
-        }
+        public override string Link => "http://www.plexapp.com/";
 
         public override void OnGrab(GrabMessage grabMessage)
         {
@@ -25,37 +22,25 @@ namespace NzbDrone.Core.Notifications.Plex
 
         public override void OnDownload(DownloadMessage message)
         {
-            UpdateIfEnabled(message.Series);
+            UpdateIfEnabled(message.Movie);
         }
 
-        public override void OnRename(Series series)
+        public override void OnMovieRename(Movie movie)
         {
-            UpdateIfEnabled(series);
+            UpdateIfEnabled(movie);
         }
-
-        private void UpdateIfEnabled(Series series)
+		
+        private void UpdateIfEnabled(Movie movie)
         {
             if (Settings.UpdateLibrary)
             {
-                _plexServerService.UpdateLibrary(series, Settings);
+                _plexServerService.UpdateMovieSections(movie, Settings);
             }
         }
 
-        public override string Name
-        {
-            get
-            {
-                return "Plex Media Server";
-            }
-        }
+        public override string Name => "Plex Media Server";
 
-        public override bool SupportsOnGrab
-        {
-            get
-            {
-                return false;
-            }
-        }
+        public override bool SupportsOnGrab => false;
 
         public override ValidationResult Test()
         {

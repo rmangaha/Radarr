@@ -1,6 +1,4 @@
-﻿using System;
-using Newtonsoft.Json;
-using NLog;
+﻿using NLog;
 using NzbDrone.Common.Http;
 using NzbDrone.Common.Serializer;
 
@@ -27,15 +25,15 @@ namespace NzbDrone.Core.Notifications.MediaBrowser
                            {
                                Name = title,
                                Description = message,
-                               ImageUrl = "https://raw.github.com/NzbDrone/NzbDrone/develop/Logo/64.png"
+                               ImageUrl = "https://raw.github.com/Radarr/Radarr/develop/Logo/64.png"
                            }.ToJson());
 
             ProcessRequest(request, settings);
         }
 
-        public void Update(MediaBrowserSettings settings, int tvdbId)
+        public void UpdateMovies(MediaBrowserSettings settings, string imdbid)
         {
-            var path = string.Format("/Library/Series/Updated?tvdbid={0}", tvdbId);            
+            var path = string.Format("/Library/Movies/Updated?ImdbId={0}", imdbid);
             var request = BuildRequest(path, settings);
             request.Headers.Add("Content-Length", "0");
 

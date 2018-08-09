@@ -2,9 +2,7 @@ var Marionette = require('marionette');
 var Backgrid = require('backgrid');
 var HistoryCollection = require('./HistoryCollection');
 var EventTypeCell = require('../../Cells/EventTypeCell');
-var SeriesTitleCell = require('../../Cells/SeriesTitleCell');
-var EpisodeNumberCell = require('../../Cells/EpisodeNumberCell');
-var EpisodeTitleCell = require('../../Cells/EpisodeTitleCell');
+var MovieTitleCell = require('../../Cells/MovieTitleCell');
 var HistoryQualityCell = require('./HistoryQualityCell');
 var RelativeDateCell = require('../../Cells/RelativeDateCell');
 var HistoryDetailsCell = require('./HistoryDetailsCell');
@@ -29,21 +27,9 @@ module.exports = Marionette.Layout.extend({
             cellValue : 'this'
         },
         {
-            name  : 'series',
-            label : 'Series',
-            cell  : SeriesTitleCell
-        },
-        {
-            name     : 'episode',
-            label    : 'Episode',
-            cell     : EpisodeNumberCell,
-            sortable : false
-        },
-        {
-            name     : 'episode',
-            label    : 'Episode Title',
-            cell     : EpisodeTitleCell,
-            sortable : false
+            name  : 'movie',
+            label : 'Movie Title',
+            cell  : MovieTitleCell,
         },
         {
             name     : 'this',
@@ -99,35 +85,35 @@ module.exports = Marionette.Layout.extend({
                     key      : 'all',
                     title    : '',
                     tooltip  : 'All',
-                    icon     : 'icon-sonarr-all',
+                    icon     : 'icon-radarr-all',
                     callback : this._setFilter
                 },
                 {
                     key      : 'grabbed',
                     title    : '',
                     tooltip  : 'Grabbed',
-                    icon     : 'icon-sonarr-downloading',
+                    icon     : 'icon-radarr-downloading',
                     callback : this._setFilter
                 },
                 {
                     key      : 'imported',
                     title    : '',
                     tooltip  : 'Imported',
-                    icon     : 'icon-sonarr-imported',
+                    icon     : 'icon-radarr-imported',
                     callback : this._setFilter
                 },
                 {
                     key      : 'failed',
                     title    : '',
                     tooltip  : 'Failed',
-                    icon     : 'icon-sonarr-download-failed',
+                    icon     : 'icon-radarr-download-failed',
                     callback : this._setFilter
                 },
                 {
                     key      : 'deleted',
                     title    : '',
                     tooltip  : 'Deleted',
-                    icon     : 'icon-sonarr-deleted',
+                    icon     : 'icon-radarr-deleted',
                     callback : this._setFilter
                 }
             ]

@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Newtonsoft.Json.Linq;
 using NzbDrone.Common.EnsureThat;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Reflection;
 using NzbDrone.Core.Annotations;
+using NzbDrone.Core.Qualities;
+using NzbDrone.Core.Profiles;
 
 namespace NzbDrone.Api.ClientSchema
 {
@@ -38,12 +41,22 @@ namespace NzbDrone.Api.ClientSchema
                     };
 
                     var value = propertyInfo.GetValue(model, null);
+
+                    if (propertyInfo.PropertyType.HasAttribute<FlagsAttribute>())
+                    {
+                        int intVal = (int)value;
+                        value = Enum.GetValues(propertyInfo.PropertyType)
+                            .Cast<int>()
+                            .Where(f=> (f & intVal) == f)
+                            .ToList();
+                    }
+
                     if (value != null)
                     {
                         field.Value = value;
                     }
 
-                    if (fieldAttribute.Type == FieldType.Select)
+                    if (fieldAttribute.Type == FieldType.Select || fieldAttribute.Type == FieldType.Tag)
                     {
                         field.SelectOptions = GetSelectOptions(fieldAttribute.SelectOptions);
                     }
@@ -73,14 +86,14 @@ namespace NzbDrone.Api.ClientSchema
 
                     if (propertyInfo.PropertyType == typeof(int))
                     {
-                        var value = Convert.ToInt32(field.Value);
-                        propertyInfo.SetValue(target, value, null);
+                        var value = field.Value.ToString().ParseInt32();
+                        propertyInfo.SetValue(target, value ?? 0, null);
                     }
 
                     else if (propertyInfo.PropertyType == typeof(long))
                     {
-                        var value = Convert.ToInt64(field.Value);
-                        propertyInfo.SetValue(target, value, null);
+                        var value = field.Value.ToString().ParseInt64();
+                        propertyInfo.SetValue(target, value ?? 0, null);
                     }
 
                     else if (propertyInfo.PropertyType == typeof(int?))
@@ -99,14 +112,14 @@ namespace NzbDrone.Api.ClientSchema
                     {
                         IEnumerable<int> value;
 
-                        if (field.Value.GetType() == typeof(JArray))
+                        if (field.Value?.GetType() == typeof(JArray))
                         {
                             value = ((JArray)field.Value).Select(s => s.Value<int>());
                         }
 
                         else
                         {
-                            value = field.Value.ToString().Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => Convert.ToInt32(s));
+                            value = field.Value?.ToString().Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => Convert.ToInt32(s));
                         }
 
                         propertyInfo.SetValue(target, value, null);
@@ -129,6 +142,12 @@ namespace NzbDrone.Api.ClientSchema
                         propertyInfo.SetValue(target, value, null);
                     }
 
+                    else if (propertyInfo.PropertyType.HasAttribute<FlagsAttribute>())
+                    {
+                        int value = field.Value.ToString().Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(s => Convert.ToInt32(s)).Sum();
+                        propertyInfo.SetValue(target, value, null);
+                    }
+
                     else
                     {
                         propertyInfo.SetValue(target, field.Value, null);
@@ -147,10 +166,22 @@ namespace NzbDrone.Api.ClientSchema
 
         private static List<SelectOption> GetSelectOptions(Type selectOptions)
         {
+            if (selectOptions == null || selectOptions == typeof(Profile))
+            {
+                return new List<SelectOption>();
+            }
+
+            if (selectOptions == typeof(Quality))
+            {
+                var qOptions = from Quality q in selectOptions.GetProperties(BindingFlags.Static | BindingFlags.Public)
+                    select new SelectOption {Name = q.Name, Value = q.Id};
+                return qOptions.OrderBy(o => o.Value).ToList();
+            }
+
             var options = from Enum e in Enum.GetValues(selectOptions)
                           select new SelectOption { Value = Convert.ToInt32(e), Name = e.ToString() };
 
-            return options.OrderBy(o => o.Value).ToList();
+            return options.OrderBy(o => o.Name).ToList();
         }
     }
 }

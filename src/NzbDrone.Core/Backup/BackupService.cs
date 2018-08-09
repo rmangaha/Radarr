@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Data.SQLite;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -25,6 +26,7 @@ namespace NzbDrone.Core.Backup
     public class BackupService : IBackupService, IExecute<BackupCommand>
     {
         private readonly IMainDatabase _maindDb;
+        private readonly IMakeDatabaseBackup _makeDatabaseBackup;
         private readonly IDiskTransferService _diskTransferService;
         private readonly IDiskProvider _diskProvider;
         private readonly IAppFolderInfo _appFolderInfo;
@@ -33,9 +35,10 @@ namespace NzbDrone.Core.Backup
 
         private string _backupTempFolder;
 
-        private static readonly Regex BackupFileRegex = new Regex(@"nzbdrone_backup_[._0-9]+\.zip", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+        private static readonly Regex BackupFileRegex = new Regex(@"radarr_backup_[._0-9]+\.zip", RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         public BackupService(IMainDatabase maindDb,
+                             IMakeDatabaseBackup makeDatabaseBackup,
                              IDiskTransferService diskTransferService,
                              IDiskProvider diskProvider,
                              IAppFolderInfo appFolderInfo,
@@ -43,13 +46,14 @@ namespace NzbDrone.Core.Backup
                              Logger logger)
         {
             _maindDb = maindDb;
+            _makeDatabaseBackup = makeDatabaseBackup;
             _diskTransferService = diskTransferService;
             _diskProvider = diskProvider;
             _appFolderInfo = appFolderInfo;
             _archiveService = archiveService;
             _logger = logger;
 
-            _backupTempFolder = Path.Combine(_appFolderInfo.TempFolder, "nzbdrone_backup");
+            _backupTempFolder = Path.Combine(_appFolderInfo.TempFolder, "radarr_backup");
         }
 
         public void Backup(BackupType backupType)
@@ -59,7 +63,7 @@ namespace NzbDrone.Core.Backup
             _diskProvider.EnsureFolder(_backupTempFolder);
             _diskProvider.EnsureFolder(GetBackupFolder(backupType));
 
-            var backupFilename = string.Format("nzbdrone_backup_{0:yyyy.MM.dd_HH.mm.ss}.zip", DateTime.Now);
+            var backupFilename = string.Format("radarr_backup_{0:yyyy.MM.dd_HH.mm.ss}.zip", DateTime.Now);
             var backupPath = Path.Combine(GetBackupFolder(backupType), backupFilename);
 
             Cleanup();
@@ -68,7 +72,7 @@ namespace NzbDrone.Core.Backup
             {
                 CleanupOldBackups(backupType);
             }
-            
+
             BackupConfigFile();
             BackupDatabase();
 
@@ -89,7 +93,7 @@ namespace NzbDrone.Core.Backup
                 {
                     backups.AddRange(GetBackupFiles(folder).Select(b => new Backup
                                                                         {
-                                                                            Path = Path.GetFileName(b),
+                                                                            Name = Path.GetFileName(b),
                                                                             Type = backupType,
                                                                             Time = _diskProvider.FileGetLastWrite(b)
                                                                         }));
@@ -111,17 +115,7 @@ namespace NzbDrone.Core.Backup
         {
             _logger.ProgressDebug("Backing up database");
 
-            using (var unitOfWork = new UnitOfWork(() => _maindDb.GetDataMapper()))
-            {
-                unitOfWork.BeginTransaction(IsolationLevel.Serializable);
-
-                var databaseFile = _appFolderInfo.GetNzbDroneDatabase();
-                var tempDatabaseFile = Path.Combine(_backupTempFolder, Path.GetFileName(databaseFile));
-
-                _diskTransferService.TransferFile(databaseFile, tempDatabaseFile, TransferMode.Copy);
-
-                unitOfWork.Commit();
-            }
+            _makeDatabaseBackup.BackupDatabase(_maindDb, _backupTempFolder);
         }
 
         private void BackupConfigFile()

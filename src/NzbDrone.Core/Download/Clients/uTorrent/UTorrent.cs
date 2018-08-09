@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Collections.Generic;
 using NzbDrone.Common.Disk;
@@ -13,6 +13,7 @@ using System.Net;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.RemotePathMappings;
 using NzbDrone.Common.Cache;
+using NzbDrone.Core.Organizer;
 
 namespace NzbDrone.Core.Download.Clients.UTorrent
 {
@@ -26,55 +27,54 @@ namespace NzbDrone.Core.Download.Clients.UTorrent
                         ITorrentFileInfoReader torrentFileInfoReader,
                         IHttpClient httpClient,
                         IConfigService configService,
+                        INamingConfigService namingConfigService,
                         IDiskProvider diskProvider,
                         IRemotePathMappingService remotePathMappingService,
                         Logger logger)
-            : base(torrentFileInfoReader, httpClient, configService, diskProvider, remotePathMappingService, logger)
+            : base(torrentFileInfoReader, httpClient, configService, namingConfigService, diskProvider, remotePathMappingService, logger)
         {
             _proxy = proxy;
 
             _torrentCache = cacheManager.GetCache<UTorrentTorrentCache>(GetType(), "differentialTorrents");
         }
 
-        protected override string AddFromMagnetLink(RemoteEpisode remoteEpisode, string hash, string magnetLink)
+        protected override string AddFromMagnetLink(RemoteMovie remoteMovie, string hash, string magnetLink)
         {
             _proxy.AddTorrentFromUrl(magnetLink, Settings);
-            _proxy.SetTorrentLabel(hash, Settings.TvCategory, Settings);
+            _proxy.SetTorrentLabel(hash, Settings.MovieCategory, Settings);
 
-            var isRecentEpisode = remoteEpisode.IsRecentEpisode();
+            var isRecentMovie = remoteMovie.Movie.IsRecentMovie;
 
-            if (isRecentEpisode && Settings.RecentTvPriority == (int)UTorrentPriority.First ||
-                !isRecentEpisode && Settings.OlderTvPriority == (int)UTorrentPriority.First)
+            if (isRecentMovie && Settings.RecentMoviePriority == (int)UTorrentPriority.First ||
+                !isRecentMovie && Settings.OlderMoviePriority == (int)UTorrentPriority.First)
             {
                 _proxy.MoveTorrentToTopInQueue(hash, Settings);
             }
 
+            _proxy.SetState(hash, (UTorrentState)Settings.IntialState, Settings);
+
             return hash;
         }
 
-        protected override string AddFromTorrentFile(RemoteEpisode remoteEpisode, string hash, string filename, byte[] fileContent)
+        protected override string AddFromTorrentFile(RemoteMovie remoteMovie, string hash, string filename, byte[] fileContent)
         {
             _proxy.AddTorrentFromFile(filename, fileContent, Settings);
-            _proxy.SetTorrentLabel(hash, Settings.TvCategory, Settings);
+            _proxy.SetTorrentLabel(hash, Settings.MovieCategory, Settings);
 
-            var isRecentEpisode = remoteEpisode.IsRecentEpisode();
+            var isRecentMovie = remoteMovie.Movie.IsRecentMovie;
 
-            if (isRecentEpisode && Settings.RecentTvPriority == (int)UTorrentPriority.First ||
-                !isRecentEpisode && Settings.OlderTvPriority == (int)UTorrentPriority.First)
+            if (isRecentMovie && Settings.RecentMoviePriority == (int)UTorrentPriority.First ||
+                !isRecentMovie && Settings.OlderMoviePriority == (int)UTorrentPriority.First)
             {
                 _proxy.MoveTorrentToTopInQueue(hash, Settings);
             }
 
+            _proxy.SetState(hash, (UTorrentState)Settings.IntialState, Settings);
+
             return hash;
         }
 
-        public override string Name
-        {
-            get
-            {
-                return "uTorrent";
-            }
-        }
+        public override string Name => "uTorrent";
 
         public override IEnumerable<DownloadClientItem> GetItems()
         {
@@ -82,7 +82,7 @@ namespace NzbDrone.Core.Download.Clients.UTorrent
 
             try
             {
-                var cacheKey = string.Format("{0}:{1}:{2}", Settings.Host, Settings.Port, Settings.TvCategory);
+                var cacheKey = string.Format("{0}:{1}:{2}", Settings.Host, Settings.Port, Settings.MovieCategory);
                 var cache = _torrentCache.Find(cacheKey);
 
                 var response = _proxy.GetTorrents(cache == null ? null : cache.CacheID, Settings);
@@ -119,7 +119,7 @@ namespace NzbDrone.Core.Download.Clients.UTorrent
 
             foreach (var torrent in torrents)
             {
-                if (torrent.Label != Settings.TvCategory)
+                if (torrent.Label != Settings.MovieCategory)
                 {
                     continue;
                 }
@@ -171,7 +171,7 @@ namespace NzbDrone.Core.Download.Clients.UTorrent
                 }
 
                 // 'Started' without 'Queued' is when the torrent is 'forced seeding'
-                item.IsReadOnly = torrent.Status.HasFlag(UTorrentTorrentStatus.Queued) || torrent.Status.HasFlag(UTorrentTorrentStatus.Started);
+                item.CanMoveFiles = item.CanBeRemoved = (!torrent.Status.HasFlag(UTorrentTorrentStatus.Queued) && !torrent.Status.HasFlag(UTorrentTorrentStatus.Started));
 
                 queueItems.Add(item);
             }
@@ -201,7 +201,7 @@ namespace NzbDrone.Core.Download.Clients.UTorrent
 
                 if (config.GetValueOrDefault("dir_add_label") == "true")
                 {
-                    destDir = destDir + Settings.TvCategory;
+                    destDir = destDir + Settings.MovieCategory;
                 }
             }
 

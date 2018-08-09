@@ -1,13 +1,15 @@
-﻿using System;
+using System;
 using System.ServiceProcess;
 using NLog;
+using NzbDrone.Common.Composition;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Core.Configuration;
+using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Lifecycle;
 using NzbDrone.Core.Messaging.Events;
-using NzbDrone.Host.Owin;
+using Radarr.Host.Owin;
 
-namespace NzbDrone.Host
+namespace Radarr.Host
 {
     public interface INzbDroneServiceFactory
     {
@@ -22,13 +24,16 @@ namespace NzbDrone.Host
         private readonly IHostController _hostController;
         private readonly IStartupContext _startupContext;
         private readonly IBrowserService _browserService;
+        private readonly IContainer _container;
         private readonly Logger _logger;
+        private CancelHandler _cancelHandler;
 
         public NzbDroneServiceFactory(IConfigFileProvider configFileProvider,
                                       IHostController hostController,
                                       IRuntimeInfo runtimeInfo,
                                       IStartupContext startupContext,
                                       IBrowserService browserService,
+                                      IContainer container,
                                       Logger logger)
         {
             _configFileProvider = configFileProvider;
@@ -36,6 +41,7 @@ namespace NzbDrone.Host
             _runtimeInfo = runtimeInfo;
             _startupContext = startupContext;
             _browserService = browserService;
+            _container = container;
             _logger = logger;
         }
 
@@ -48,10 +54,12 @@ namespace NzbDrone.Host
         {
             if (OsInfo.IsNotWindows)
             {
-                Console.CancelKeyPress += (sender, eventArgs) => LogManager.Configuration = null;
+                //Console.CancelKeyPress += (sender, eventArgs) => eventArgs.Cancel = true;
+                //_cancelHandler = new CancelHandler();
             }
 
             _runtimeInfo.IsRunning = true;
+            DbFactory.RegisterDatabase(_container);
             _hostController.StartServer();
 
             if (!_startupContext.Flags.Contains(StartupContext.NO_BROWSER)
@@ -59,6 +67,9 @@ namespace NzbDrone.Host
             {
                 _browserService.LaunchWebUI();
             }
+
+            
+            _container.Resolve<IEventAggregator>().PublishEvent(new ApplicationStartedEvent());
         }
 
         protected override void OnStop()

@@ -1,5 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Net;
+using System.Xml;
 using System.Xml.Linq;
 using NLog;
 using NzbDrone.Common.Cache;
@@ -30,6 +32,7 @@ namespace NzbDrone.Core.Indexers.Newznab
         public NewznabCapabilities GetCapabilities(NewznabSettings indexerSettings)
         {
             var key = indexerSettings.ToJson();
+            //_capabilitiesCache.Clear(); I am an idiot, i think
             var capabilities = _capabilitiesCache.Get(key, () => FetchCapabilities(indexerSettings), TimeSpan.FromDays(7));
 
             return capabilities;
@@ -39,7 +42,7 @@ namespace NzbDrone.Core.Indexers.Newznab
         {
             var capabilities = new NewznabCapabilities();
 
-            var url = string.Format("{0}/api?t=caps", indexerSettings.Url.TrimEnd('/'));
+            var url = string.Format("{0}/api?t=caps", indexerSettings.BaseUrl.TrimEnd('/'));
 
             if (indexerSettings.ApiKey.IsNotNullOrWhiteSpace())
             {
@@ -48,15 +51,30 @@ namespace NzbDrone.Core.Indexers.Newznab
 
             var request = new HttpRequest(url, HttpAccept.Rss);
 
+            HttpResponse response;
+
             try
             {
-                var response = _httpClient.Get(request);
-
-                capabilities = ParseCapabilities(response);
+                response = _httpClient.Get(request);
             }
             catch (Exception ex)
             {
-                _logger.Debug(ex, string.Format("Failed to get capabilities from {0}: {1}", indexerSettings.Url, ex.Message));
+                _logger.Debug(ex, "Failed to get Newznab API capabilities from {0}", indexerSettings.BaseUrl);
+                throw;
+            }
+
+            try
+            {
+                capabilities = ParseCapabilities(response);
+            }
+            catch (XmlException ex)
+            {
+                _logger.Debug(ex, "Failed to parse newznab api capabilities for {0}.", indexerSettings.BaseUrl);
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "Failed to determine newznab api capabilities for {0}, using the defaults instead till Radarr restarts.", indexerSettings.BaseUrl);
             }
 
             return capabilities;
@@ -66,7 +84,19 @@ namespace NzbDrone.Core.Indexers.Newznab
         {
             var capabilities = new NewznabCapabilities();
 
-            var xmlRoot = XDocument.Parse(response.Content).Element("caps");
+            var xDoc = XDocument.Parse(response.Content);
+
+            if (xDoc == null)
+            {
+                throw new XmlException("Invalid XML");
+            }
+
+            var xmlRoot = xDoc.Element("caps");
+
+            if (xmlRoot == null)
+            {
+                throw new XmlException("Unexpected XML");
+            }
 
             var xmlLimits = xmlRoot.Element("limits");
             if (xmlLimits != null)
@@ -96,6 +126,16 @@ namespace NzbDrone.Core.Indexers.Newznab
                 else if (xmlTvSearch.Attribute("supportedParams") != null)
                 {
                     capabilities.SupportedTvSearchParameters = xmlTvSearch.Attribute("supportedParams").Value.Split(',');
+                    capabilities.SupportsAggregateIdSearch = true;
+                }
+                var xmlMovieSearch = xmlSearching.Element("movie-search");
+                if (xmlMovieSearch == null || xmlMovieSearch.Attribute("available").Value != "yes")
+                {
+                    capabilities.SupportedMovieSearchParameters = null;
+                }
+                else if (xmlMovieSearch.Attribute("supportedParams") != null)
+                {
+                    capabilities.SupportedMovieSearchParameters = xmlMovieSearch.Attribute("supportedParams").Value.Split(',');
                     capabilities.SupportsAggregateIdSearch = true;
                 }
             }

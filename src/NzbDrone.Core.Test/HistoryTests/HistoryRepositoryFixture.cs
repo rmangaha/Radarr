@@ -1,4 +1,4 @@
-﻿using FizzWare.NBuilder;
+using FizzWare.NBuilder;
 using FluentAssertions;
 using NUnit.Framework;
 using NzbDrone.Core.History;
@@ -10,6 +10,10 @@ namespace NzbDrone.Core.Test.HistoryTests
     [TestFixture]
     public class HistoryRepositoryFixture : DbTest<HistoryRepository, History.History>
     {
+        [SetUp]
+        public void Setup()
+        {
+        }
 
         [Test]
         public void should_read_write_dictionary()
@@ -32,13 +36,13 @@ namespace NzbDrone.Core.Test.HistoryTests
         {
             var historyBluray = Builder<History.History>.CreateNew()
                 .With(c => c.Quality = new QualityModel(Quality.Bluray1080p))
-                .With(c => c.SeriesId = 12)
+                .With(c => c.MovieId = 12)
                 .With(c => c.EventType = HistoryEventType.Grabbed)
                 .BuildNew();
 
             var historyDvd = Builder<History.History>.CreateNew()
                 .With(c => c.Quality = new QualityModel(Quality.DVD))
-                .With(c => c.SeriesId = 12)
+                .With(c => c.MovieId = 12)
                 .With(c => c.EventType = HistoryEventType.Grabbed)
              .BuildNew();
 

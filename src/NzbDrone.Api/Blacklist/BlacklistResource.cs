@@ -1,8 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using NzbDrone.Api.Movies;
 using NzbDrone.Api.REST;
 using NzbDrone.Core.Qualities;
-using NzbDrone.Api.Series;
 using NzbDrone.Core.Indexers;
 
 namespace NzbDrone.Api.Blacklist
@@ -11,14 +11,14 @@ namespace NzbDrone.Api.Blacklist
     {
         public int SeriesId { get; set; }
         public List<int> EpisodeIds { get; set; }
+        public int MovieId { get; set; }
         public string SourceTitle { get; set; }
         public QualityModel Quality { get; set; }
         public DateTime Date { get; set; }
         public DownloadProtocol Protocol { get; set; }
         public string Indexer { get; set; }
         public string Message { get; set; }
-
-        public SeriesResource Series { get; set; }
+        public MovieResource Movie { get; set; }
     }
 
     public static class BlacklistResourceMapper
@@ -30,17 +30,14 @@ namespace NzbDrone.Api.Blacklist
             return new BlacklistResource
             {
                 Id = model.Id,
-
-                SeriesId = model.SeriesId,
-                EpisodeIds = model.EpisodeIds,
+                MovieId = model.MovieId,
                 SourceTitle = model.SourceTitle,
                 Quality = model.Quality,
                 Date = model.Date,
                 Protocol = model.Protocol,
                 Indexer = model.Indexer,
                 Message = model.Message,
-
-                Series = model.Series.ToResource()
+                Movie = model.Movie.ToResource()
             };
         }
     }

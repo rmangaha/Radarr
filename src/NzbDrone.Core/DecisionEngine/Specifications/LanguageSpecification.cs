@@ -1,5 +1,6 @@
 using NLog;
 using NzbDrone.Core.IndexerSearch.Definitions;
+using NzbDrone.Core.Parser;
 using NzbDrone.Core.Parser.Model;
 
 namespace NzbDrone.Core.DecisionEngine.Specifications
@@ -13,18 +14,18 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
             _logger = logger;
         }
 
-        public RejectionType Type { get { return RejectionType.Permanent; } }
+        public RejectionType Type => RejectionType.Permanent;
 
-        public virtual Decision IsSatisfiedBy(RemoteEpisode subject, SearchCriteriaBase searchCriteria)
+        public virtual Decision IsSatisfiedBy(RemoteMovie subject, SearchCriteriaBase searchCriteria)
         {
-            var wantedLanguage = subject.Series.Profile.Value.Language;
-            
-            _logger.Debug("Checking if report meets language requirements. {0}", subject.ParsedEpisodeInfo.Language);
+            var wantedLanguage = subject.Movie.Profile.Value.Language;
 
-            if (subject.ParsedEpisodeInfo.Language != wantedLanguage)
+            _logger.Debug("Checking if report meets language requirements. {0}", subject.ParsedMovieInfo.Languages.ToExtendedString());
+
+            if (!subject.ParsedMovieInfo.Languages.Contains(wantedLanguage))
             {
-                _logger.Debug("Report Language: {0} rejected because it is not wanted, wanted {1}", subject.ParsedEpisodeInfo.Language, wantedLanguage);
-                return Decision.Reject("{0} is wanted, but found {1}", wantedLanguage, subject.ParsedEpisodeInfo.Language);
+                _logger.Debug("Report Language: {0} rejected because it is not wanted, wanted {1}", subject.ParsedMovieInfo.Languages.ToExtendedString(), wantedLanguage);
+                return Decision.Reject("{0} is wanted, but found {1}", wantedLanguage, subject.ParsedMovieInfo.Languages.ToExtendedString());
             }
 
             return Decision.Accept();

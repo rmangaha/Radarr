@@ -1,13 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
-using NzbDrone.Common.Crypto;
 using NzbDrone.Common.Disk;
-using NzbDrone.Common.Extensions;
 using NzbDrone.Core.MediaCover;
 using NzbDrone.Core.Test.Framework;
 
@@ -34,6 +30,10 @@ namespace NzbDrone.Core.Test.MediaCoverTests
             Mocker.GetMock<IDiskProvider>()
                   .Setup(v => v.DeleteFile(It.IsAny<string>()))
                   .Callback<string>(s => File.Delete(s));
+                  
+            Mocker.GetMock<IDiskProvider>()
+                  .Setup(v => v.CanUseGDIPlus())
+                  .Returns(true);
         }
 
         [Test]

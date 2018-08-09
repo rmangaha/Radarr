@@ -1,10 +1,9 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using NzbDrone.Common.EnsureThat;
 using NzbDrone.Common.Extensions;
-using NzbDrone.Core.Tv;
+using NzbDrone.Core.Movies;
 
 namespace NzbDrone.Core.IndexerSearch.Definitions
 {
@@ -14,19 +13,12 @@ namespace NzbDrone.Core.IndexerSearch.Definitions
         private static readonly Regex NonWord = new Regex(@"[\W]", RegexOptions.IgnoreCase | RegexOptions.Compiled);
         private static readonly Regex BeginningThe = new Regex(@"^the\s", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-        public Series Series { get; set; }
+        public Movie Movie { get; set; }
         public List<string> SceneTitles { get; set; }
-        public List<Episode> Episodes { get; set; }
         public virtual bool MonitoredEpisodesOnly { get; set; }
         public virtual bool UserInvokedSearch { get; set; }
 
-        public List<string> QueryTitles
-        {
-            get
-            {
-                return SceneTitles.Select(GetQueryTitle).ToList();
-            }
-        }
+        public List<string> QueryTitles => SceneTitles.Select(GetQueryTitle).ToList();
 
         public static string GetQueryTitle(string title)
         {

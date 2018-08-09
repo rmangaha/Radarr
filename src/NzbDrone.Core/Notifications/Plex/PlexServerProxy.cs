@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using Newtonsoft.Json.Linq;
@@ -11,17 +10,19 @@ using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Notifications.Plex.Models;
 using NzbDrone.Core.Rest;
 using RestSharp;
+using RestSharp.Authenticators;
 
 namespace NzbDrone.Core.Notifications.Plex
 {
     public interface IPlexServerProxy
     {
         List<PlexSection> GetTvSections(PlexServerSettings settings);
+        List<PlexSection> GetMovieSections(PlexServerSettings settings);
         void Update(int sectionId, PlexServerSettings settings);
-        void UpdateSeries(int metadataId, PlexServerSettings settings);
+        void UpdateItem(int metadataId, PlexServerSettings settings);
         string Version(PlexServerSettings settings);
         List<PlexPreference> Preferences(PlexServerSettings settings);
-        int? GetMetadataId(int sectionId, int tvdbId, string language, PlexServerSettings settings);
+        int? GetMetadataId(int sectionId, string imdbId, string language, PlexServerSettings settings);
     }
 
     public class PlexServerProxy : IPlexServerProxy
@@ -48,7 +49,7 @@ namespace NzbDrone.Core.Notifications.Plex
             {
                 return Json.Deserialize<PlexMediaContainerLegacy>(response.Content)
                     .Sections
-                    .Where(d => d.Type == "show")
+                    .Where(d => d.Type == "movie")
                     .Select(s => new PlexSection
                                  {
                                      Id = s.Id,
@@ -62,7 +63,38 @@ namespace NzbDrone.Core.Notifications.Plex
             return Json.Deserialize<PlexResponse<PlexSectionsContainer>>(response.Content)
                        .MediaContainer
                        .Sections
-                       .Where(d => d.Type == "show")
+                       .Where(d => d.Type == "movie")
+                       .ToList();
+        }
+
+        public List<PlexSection> GetMovieSections(PlexServerSettings settings)
+        {
+            var request = GetPlexServerRequest("library/sections", Method.GET, settings);
+            var client = GetPlexServerClient(settings);
+            var response = client.Execute(request);
+
+            _logger.Trace("Sections response: {0}", response.Content);
+            CheckForError(response, settings);
+
+            if (response.Content.Contains("_children"))
+            {
+                return Json.Deserialize<PlexMediaContainerLegacy>(response.Content)
+                    .Sections
+                    .Where(d => d.Type == "movie")
+                    .Select(s => new PlexSection
+                    {
+                        Id = s.Id,
+                        Language = s.Language,
+                        Locations = s.Locations,
+                        Type = s.Type
+                    })
+                    .ToList();
+            }
+
+            return Json.Deserialize<PlexResponse<PlexSectionsContainer>>(response.Content)
+                       .MediaContainer
+                       .Sections
+                       .Where(d => d.Type == "movie")
                        .ToList();
         }
 
@@ -77,14 +109,14 @@ namespace NzbDrone.Core.Notifications.Plex
             CheckForError(response, settings);
         }
 
-        public void UpdateSeries(int metadataId, PlexServerSettings settings)
+        public void UpdateItem(int metadataId, PlexServerSettings settings)
         {
             var resource = string.Format("library/metadata/{0}/refresh", metadataId);
             var request = GetPlexServerRequest(resource, Method.PUT, settings);
             var client = GetPlexServerClient(settings);
             var response = client.Execute(request);
 
-            _logger.Trace("Update Series response: {0}", response.Content);
+            _logger.Trace("Update Item response: {0}", response.Content);
             CheckForError(response, settings);
         }
 
@@ -128,9 +160,9 @@ namespace NzbDrone.Core.Notifications.Plex
                        .Preferences;
         }
 
-        public int? GetMetadataId(int sectionId, int tvdbId, string language, PlexServerSettings settings)
+        public int? GetMetadataId(int sectionId, string imdbId, string language, PlexServerSettings settings)
         {
-            var guid = string.Format("com.plexapp.agents.thetvdb://{0}?lang={1}", tvdbId, language);
+            var guid = string.Format("com.plexapp.agents.imdb://{0}?lang={1}", imdbId, language);
             var resource = string.Format("library/sections/{0}/all?guid={1}", sectionId, System.Web.HttpUtility.UrlEncode(guid));
             var request = GetPlexServerRequest(resource, Method.GET, settings);
             var client = GetPlexServerClient(settings);
@@ -192,8 +224,8 @@ namespace NzbDrone.Core.Notifications.Plex
             request.AddHeader("X-Plex-Platform-Version", "7");
             request.AddHeader("X-Plex-Provides", "player");
             request.AddHeader("X-Plex-Client-Identifier", "AB6CCCC7-5CF5-4523-826A-B969E0FFD8A0");
-            request.AddHeader("X-Plex-Device-Name", "Sonarr");
-            request.AddHeader("X-Plex-Product", "Sonarr");
+            request.AddHeader("X-Plex-Device-Name", "Radarr");
+            request.AddHeader("X-Plex-Product", "Radarr");
             request.AddHeader("X-Plex-Version", BuildInfo.Version.ToString());
 
             return request;

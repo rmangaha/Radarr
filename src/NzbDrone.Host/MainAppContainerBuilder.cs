@@ -1,15 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Nancy.Bootstrapper;
 using NzbDrone.Api;
 using NzbDrone.Common.Composition;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Http.Dispatchers;
-using NzbDrone.Core.Datastore;
-using NzbDrone.Core.Organizer;
 using NzbDrone.SignalR;
 
-namespace NzbDrone.Host
+namespace Radarr.Host
 {
     public class MainAppContainerBuilder : ContainerBuilderBase
     {
@@ -17,7 +14,7 @@ namespace NzbDrone.Host
         {
             var assemblies = new List<string>
                              {
-                                 "NzbDrone.Host",
+                                 "Radarr.Host",
                                  "NzbDrone.Common",
                                  "NzbDrone.Core",
                                  "NzbDrone.Api",

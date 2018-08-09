@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Collections.Generic;
 using FluentValidation.Results;
@@ -11,6 +11,7 @@ using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.RemotePathMappings;
 using NzbDrone.Core.ThingiProvider;
 using NzbDrone.Core.Validation;
+using NzbDrone.Core.Organizer;
 
 namespace NzbDrone.Core.Download
 {
@@ -18,54 +19,36 @@ namespace NzbDrone.Core.Download
         where TSettings : IProviderConfig, new()
     {
         protected readonly IConfigService _configService;
+        protected readonly INamingConfigService _namingConfigService;
         protected readonly IDiskProvider _diskProvider;
         protected readonly IRemotePathMappingService _remotePathMappingService;
         protected readonly Logger _logger;
 
         public abstract string Name { get; }
 
-        public Type ConfigContract
-        {
-            get
-            {
-                return typeof(TSettings);
-            }
-        }
+        public Type ConfigContract => typeof(TSettings);
 
-        public virtual ProviderMessage Message
-        {
-            get
-            {
-                return null;
-            }
-        }
+        public virtual ProviderMessage Message => null;
 
-        public IEnumerable<ProviderDefinition> DefaultDefinitions
+        public IEnumerable<ProviderDefinition> GetDefaultDefinitions()
         {
-            get
-            {
-                return new List<ProviderDefinition>();
-            }
+            return new List<ProviderDefinition>();
         }
 
         public ProviderDefinition Definition { get; set; }
 
         public virtual object RequestAction(string action, IDictionary<string, string> query) { return null; }
 
-        protected TSettings Settings
-        {
-            get
-            {
-                return (TSettings)Definition.Settings;
-            }
-        }
+        protected TSettings Settings => (TSettings)Definition.Settings;
 
-        protected DownloadClientBase(IConfigService configService, 
+        protected DownloadClientBase(IConfigService configService,
+            INamingConfigService namingConfigService,
             IDiskProvider diskProvider, 
             IRemotePathMappingService remotePathMappingService,
             Logger logger)
         {
             _configService = configService;
+            _namingConfigService = namingConfigService;
             _diskProvider = diskProvider;
             _remotePathMappingService = remotePathMappingService;
             _logger = logger;
@@ -81,7 +64,7 @@ namespace NzbDrone.Core.Download
             get;
         }
 
-        public abstract string Download(RemoteEpisode remoteEpisode);
+        public abstract string Download(RemoteMovie remoteMovie);
         public abstract IEnumerable<DownloadClientItem> GetItems();
         public abstract void RemoveItem(string downloadId, bool deleteData);
         public abstract DownloadClientStatus GetStatus();
@@ -134,7 +117,7 @@ namespace NzbDrone.Core.Download
         public ValidationResult Test()
         {
             var failures = new List<ValidationFailure>();
-            
+
             try
             {
                 Test(failures);
@@ -156,7 +139,7 @@ namespace NzbDrone.Core.Download
             {
                 return new NzbDroneValidationFailure(propertyName, "Folder does not exist")
                 {
-                    DetailedDescription = string.Format("The folder you specified does not exist or is inaccessible. Please verify the folder permissions for the user account '{0}', which is used to execute Sonarr.", Environment.UserName)
+                    DetailedDescription = string.Format("The folder you specified does not exist or is inaccessible. Please verify the folder permissions for the user account '{0}', which is used to execute Radarr.", Environment.UserName)
                 };
             }
 
@@ -165,11 +148,12 @@ namespace NzbDrone.Core.Download
                 _logger.Error("Folder '{0}' is not writable.", folder);
                 return new NzbDroneValidationFailure(propertyName, "Unable to write to folder")
                 {
-                    DetailedDescription = string.Format("The folder you specified is not writable. Please verify the folder permissions for the user account '{0}', which is used to execute Sonarr.", Environment.UserName)
+                    DetailedDescription = string.Format("The folder you specified is not writable. Please verify the folder permissions for the user account '{0}', which is used to execute Radarr.", Environment.UserName)
                 };
             }
 
             return null;
         }
+        
     }
 }

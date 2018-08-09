@@ -1,4 +1,4 @@
-﻿using FluentValidation;
+using FluentValidation;
 using NzbDrone.Core.Annotations;
 using NzbDrone.Core.ThingiProvider;
 using NzbDrone.Core.Validation;
@@ -10,7 +10,7 @@ namespace NzbDrone.Core.Download.Clients.NzbVortex
         public NzbVortexSettingsValidator()
         {
             RuleFor(c => c.Host).ValidHost();
-            RuleFor(c => c.Port).GreaterThan(0);
+            RuleFor(c => c.Port).InclusiveBetween(1, 65535);
 
             RuleFor(c => c.ApiKey).NotEmpty()
                                   .WithMessage("API Key is required");
@@ -29,9 +29,9 @@ namespace NzbDrone.Core.Download.Clients.NzbVortex
         {
             Host = "localhost";
             Port = 4321;
-            TvCategory = "TV Shows";
-            RecentTvPriority = (int)NzbVortexPriority.Normal;
-            OlderTvPriority = (int)NzbVortexPriority.Normal;
+            TvCategory = "Movies";
+            RecentMoviePriority = (int)NzbVortexPriority.Normal;
+            OlderMoviePriority = (int)NzbVortexPriority.Normal;
         }
 
         [FieldDefinition(0, Label = "Host", Type = FieldType.Textbox)]
@@ -43,14 +43,14 @@ namespace NzbDrone.Core.Download.Clients.NzbVortex
         [FieldDefinition(2, Label = "API Key", Type = FieldType.Textbox)]
         public string ApiKey { get; set; }
 
-        [FieldDefinition(3, Label = "Group", Type = FieldType.Textbox, HelpText = "Adding a category specific to Sonarr avoids conflicts with unrelated downloads, but it's optional")]
+        [FieldDefinition(3, Label = "Group", Type = FieldType.Textbox, HelpText = "Adding a category specific to Radarr avoids conflicts with unrelated downloads, but it's optional")]
         public string TvCategory { get; set; }
 
-        [FieldDefinition(4, Label = "Recent Priority", Type = FieldType.Select, SelectOptions = typeof(NzbVortexPriority), HelpText = "Priority to use when grabbing episodes that aired within the last 14 days")]
-        public int RecentTvPriority { get; set; }
+        [FieldDefinition(4, Label = "Recent Priority", Type = FieldType.Select, SelectOptions = typeof(NzbVortexPriority), HelpText = "Priority to use when grabbing movies that released within the last 21 days")]
+        public int RecentMoviePriority { get; set; }
 
-        [FieldDefinition(5, Label = "Older Priority", Type = FieldType.Select, SelectOptions = typeof(NzbVortexPriority), HelpText = "Priority to use when grabbing episodes that aired over 14 days ago")]
-        public int OlderTvPriority { get; set; }
+        [FieldDefinition(5, Label = "Older Priority", Type = FieldType.Select, SelectOptions = typeof(NzbVortexPriority), HelpText = "Priority to use when grabbing movies that released over 21 days ago")]
+        public int OlderMoviePriority { get; set; }
 
         public NzbDroneValidationResult Validate()
         {

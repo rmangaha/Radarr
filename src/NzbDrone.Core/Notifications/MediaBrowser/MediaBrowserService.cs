@@ -1,16 +1,16 @@
-﻿using System;
+using System;
 using System.Net;
 using FluentValidation.Results;
 using NLog;
 using NzbDrone.Core.Rest;
-using NzbDrone.Core.Tv;
+using NzbDrone.Core.Movies;
 
 namespace NzbDrone.Core.Notifications.MediaBrowser
 {
     public interface IMediaBrowserService
     {
         void Notify(MediaBrowserSettings settings, string title, string message);
-        void Update(MediaBrowserSettings settings, Series series);
+        void UpdateMovies(MediaBrowserSettings settings, Movie movie);
         ValidationFailure Test(MediaBrowserSettings settings);
     }
 
@@ -30,10 +30,11 @@ namespace NzbDrone.Core.Notifications.MediaBrowser
             _proxy.Notify(settings, title, message);
         }
 
-        public void Update(MediaBrowserSettings settings, Series series)
+        public void UpdateMovies(MediaBrowserSettings settings, Movie movie)
         {
-            _proxy.Update(settings, series.TvdbId);
+            _proxy.UpdateMovies(settings, movie.ImdbId);
         }
+
 
         public ValidationFailure Test(MediaBrowserSettings settings)
         {
@@ -41,13 +42,13 @@ namespace NzbDrone.Core.Notifications.MediaBrowser
             {
                 _logger.Debug("Testing connection to MediaBrowser: {0}", settings.Address);
 
-                Notify(settings, "Test from Sonarr", "Success! MediaBrowser has been successfully configured!");
+                Notify(settings, "Test from Radarr", "Success! MediaBrowser has been successfully configured!");
             }
             catch (RestException ex)
             {
                 if (ex.Response.StatusCode == HttpStatusCode.Unauthorized)
                 {
-                    return new ValidationFailure("ApiKey", "API Key is incorrect");
+                    return new ValidationFailure("ApiKey", "API key is incorrect");
                 }
             }
             catch (Exception ex)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NLog;
@@ -12,8 +12,8 @@ using NzbDrone.Core.Messaging.Events;
 namespace NzbDrone.Core.Download.TrackedDownloads
 {
     public class DownloadMonitoringService : IExecute<CheckForFinishedDownloadCommand>,
-                                             IHandle<EpisodeGrabbedEvent>,
-                                             IHandle<EpisodeImportedEvent>
+                                             IHandle<MovieGrabbedEvent>,
+                                             IHandle<MovieImportedEvent>
     {
         private readonly IProvideDownloadClient _downloadClientProvider;
         private readonly IEventAggregator _eventAggregator;
@@ -107,7 +107,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
 
         private void RemoveCompletedDownloads(List<TrackedDownload> trackedDownloads)
         {
-            foreach (var trackedDownload in trackedDownloads.Where(c => !c.DownloadItem.IsReadOnly && c.State == TrackedDownloadStage.Imported))
+            foreach (var trackedDownload in trackedDownloads.Where(c => c.DownloadItem.CanBeRemoved && c.State == TrackedDownloadStage.Imported))
             {
                 _eventAggregator.PublishEvent(new DownloadCompletedEvent(trackedDownload));
             }
@@ -135,7 +135,7 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             }
             catch (Exception e)
             {
-                _logger.Error(e, "Couldn't process tracked download " + downloadItem.Title);
+                _logger.Error(e, $"Couldn't process tracked download {downloadItem.Title}");
             }
 
             return trackedDownloads;
@@ -163,12 +163,12 @@ namespace NzbDrone.Core.Download.TrackedDownloads
             Refresh();
         }
 
-        public void Handle(EpisodeGrabbedEvent message)
+        public void Handle(MovieGrabbedEvent message)
         {
             _refreshDebounce.Execute();
         }
 
-        public void Handle(EpisodeImportedEvent message)
+        public void Handle(MovieImportedEvent message)
         {
             _refreshDebounce.Execute();
         }

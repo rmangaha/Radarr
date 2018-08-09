@@ -32,7 +32,7 @@ namespace NzbDrone.Core.Notifications.NotifyMyAndroid
             var request = new RestRequest("notify", Method.POST);
             request.RequestFormat = DataFormat.Xml;
             request.AddParameter("apikey", apiKey);
-            request.AddParameter("application", "Sonarr");
+            request.AddParameter("application", "Radarr");
             request.AddParameter("event", title);
             request.AddParameter("description", message);
             request.AddParameter("priority", (int)priority);
@@ -69,7 +69,7 @@ namespace NzbDrone.Core.Notifications.NotifyMyAndroid
             try
             {
                 const string title = "Test Notification";
-                const string body = "This is a test message from Sonarr";
+                const string body = "This is a test message from Radarr";
                 Verify(settings.ApiKey);
                 SendNotification(title, body, settings.ApiKey, (NotifyMyAndroidPriority)settings.Priority);
             }

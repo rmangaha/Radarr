@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -11,6 +11,7 @@ using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Validation;
 using NzbDrone.Core.RemotePathMappings;
+using NzbDrone.Core.Organizer;
 
 namespace NzbDrone.Core.Download.Clients.NzbVortex
 {
@@ -21,19 +22,20 @@ namespace NzbDrone.Core.Download.Clients.NzbVortex
         public NzbVortex(INzbVortexProxy proxy,
                        IHttpClient httpClient,
                        IConfigService configService,
+                       INamingConfigService namingConfigService,
                        IDiskProvider diskProvider,
                        IRemotePathMappingService remotePathMappingService,
                        Logger logger)
-            : base(httpClient, configService, diskProvider, remotePathMappingService, logger)
+            : base(httpClient, configService, namingConfigService, diskProvider, remotePathMappingService, logger)
         {
             _proxy = proxy;
         }
 
-        protected override string AddFromNzbFile(RemoteEpisode remoteEpisode, string filename, byte[] fileContent)
+        protected override string AddFromNzbFile(RemoteMovie remoteMovie, string filename, byte[] fileContents)
         {
-            var priority = remoteEpisode.IsRecentEpisode() ? Settings.RecentTvPriority : Settings.OlderTvPriority;
+            var priority = remoteMovie.Movie.IsRecentMovie ? Settings.RecentMoviePriority : Settings.OlderMoviePriority;
 
-            var response = _proxy.DownloadNzb(fileContent, filename, priority, Settings);
+            var response = _proxy.DownloadNzb(fileContents, filename, priority, Settings);
 
             if (response == null)
             {
@@ -43,13 +45,7 @@ namespace NzbDrone.Core.Download.Clients.NzbVortex
             return response;
         }
 
-        public override string Name
-        {
-            get
-            {
-                return "NZBVortex";
-            }
-        }
+        public override string Name => "NZBVortex";
 
         public override IEnumerable<DownloadClientItem> GetItems()
         {
@@ -78,7 +74,9 @@ namespace NzbDrone.Core.Download.Clients.NzbVortex
                 queueItem.TotalSize = vortexQueueItem.TotalDownloadSize;
                 queueItem.RemainingSize = vortexQueueItem.TotalDownloadSize - vortexQueueItem.DownloadedSize;
                 queueItem.RemainingTime = null;
-                
+                queueItem.CanBeRemoved = true;
+                queueItem.CanMoveFiles = true;
+
                 if (vortexQueueItem.IsPaused)
                 {
                     queueItem.Status = DownloadItemStatus.Paused;

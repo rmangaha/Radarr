@@ -3,16 +3,16 @@ var Marionette = require('marionette');
 var Backgrid = require('backgrid');
 var CutoffUnmetCollection = require('./CutoffUnmetCollection');
 var SelectAllCell = require('../../Cells/SelectAllCell');
-var SeriesTitleCell = require('../../Cells/SeriesTitleCell');
-var EpisodeNumberCell = require('../../Cells/EpisodeNumberCell');
-var EpisodeTitleCell = require('../../Cells/EpisodeTitleCell');
+var MovieTitleCell = require('../../Cells/MovieTitleCell');
+var DownloadedQualityCell = require('../../Cells/DownloadedQualityCell');
+var MovieStatusWithTextCell = require('../../Cells/MovieStatusWithTextCell');
 var RelativeDateCell = require('../../Cells/RelativeDateCell');
-var EpisodeStatusCell = require('../../Cells/EpisodeStatusCell');
 var GridPager = require('../../Shared/Grid/Pager');
 var ToolbarLayout = require('../../Shared/Toolbar/ToolbarLayout');
 var LoadingView = require('../../Shared/LoadingView');
 var Messenger = require('../../Shared/Messenger');
 var CommandController = require('../../Commands/CommandController');
+
 require('backgrid.selectall');
 require('../../Mixins/backbone.signalr.mixin');
 
@@ -26,7 +26,7 @@ module.exports = Marionette.Layout.extend({
     },
 
     ui : {
-        searchSelectedButton : '.btn i.icon-sonarr-search'
+        searchSelectedButton : '.btn i.icon-radarr-search'
     },
 
     columns : [
@@ -37,32 +37,31 @@ module.exports = Marionette.Layout.extend({
             sortable   : false
         },
         {
-            name      : 'series',
-            label     : 'Series Title',
-            cell      : SeriesTitleCell,
-            sortValue : 'series.sortTitle'
+            name      : 'title',
+            label     : 'Title',
+            cell      : MovieTitleCell,
+            cellValue : 'this',
         },
         {
-            name     : 'this',
-            label    : 'Episode',
-            cell     : EpisodeNumberCell,
-            sortable : false
+          name : "movieFile.quality",
+          label : "Downloaded", 
+          cell : DownloadedQualityCell,
+          sortable : true
         },
         {
-            name     : 'this',
-            label    : 'Episode Title',
-            cell     : EpisodeTitleCell,
-            sortable : false
+            name      : 'inCinemas',
+            label     : 'In Cinemas',
+            cell      : RelativeDateCell
         },
         {
-            name  : 'airDateUtc',
-            label : 'Air Date',
-            cell  : RelativeDateCell
+            name      : 'physicalRelease',
+            label     : 'Physical Release',
+            cell      : RelativeDateCell
         },
         {
             name     : 'status',
             label    : 'Status',
-            cell     : EpisodeStatusCell,
+            cell     : MovieStatusWithTextCell,
             sortable : false
         }
     ],
@@ -98,19 +97,22 @@ module.exports = Marionette.Layout.extend({
         var leftSideButtons = {
             type       : 'default',
             storeState : false,
+            collapse: true,
             items      : [
                 {
                     title        : 'Search Selected',
-                    icon         : 'icon-sonarr-search',
+                    icon         : 'icon-radarr-search',
                     callback     : this._searchSelected,
                     ownerContext : this,
                     className    : 'x-search-selected'
                 },
                 {
-                    title : 'Season Pass',
-                    icon  : 'icon-sonarr-monitored',
-                    route : 'seasonpass'
-                }
+                    title        : 'Search All',
+                    icon         : 'icon-radarr-search',
+                    callback     : this._searchMissing,
+                    ownerContext : this,
+                    className    : 'x-search-cutoff'
+                },
             ]
         };
 
@@ -121,20 +123,55 @@ module.exports = Marionette.Layout.extend({
             defaultAction : 'monitored',
             items         : [
                 {
+                    key      : 'all',
+                    title    : '',
+                    tooltip  : 'All',
+                    icon     : 'icon-radarr-all',
+                    callback : this._setFilter
+                },
+                {
+                    key      : 'available',
+                    title    : '',
+                    tooltip  : 'Available & Monitored',
+                    icon     : 'icon-radarr-available',
+                    callback : this._setFilter
+                },
+                {
                     key      : 'monitored',
                     title    : '',
                     tooltip  : 'Monitored Only',
-                    icon     : 'icon-sonarr-monitored',
+                    icon     : 'icon-radarr-monitored',
                     callback : this._setFilter
                 },
                 {
                     key      : 'unmonitored',
                     title    : '',
                     tooltip  : 'Unmonitored Only',
-                    icon     : 'icon-sonarr-unmonitored',
+                    icon     : 'icon-radarr-unmonitored',
+                    callback : this._setFilter
+                },
+                {
+                    key      : 'announced',
+                    title    : '',
+                    tooltip  : 'Announced Only',
+                    icon     : 'icon-radarr-movie-announced',
+                    callback : this._setFilter
+                },
+                {
+                    key      : 'incinemas',
+                    title    : '',
+                    tooltip  : 'In Cinemas Only',
+                    icon     : 'icon-radarr-movie-cinemas',
+                    callback : this._setFilter
+                },
+                {
+                    key      : 'released',
+                    title    : '',
+                    tooltip  : 'Released Only',
+                    icon     : 'icon-radarr-movie-released',
                     callback : this._setFilter
                 }
-            ]
+        ]
         };
 
         this.toolbar.show(new ToolbarLayout({
@@ -148,10 +185,15 @@ module.exports = Marionette.Layout.extend({
         }));
 
         CommandController.bindToCommand({
-            element : this.$('.x-search-selected'),
-            command : {
-                name : 'episodeSearch'
+            element  : this.$('.x-search-selected'),
+            command  : {
+                name : 'moviesSearch'
             }
+        });
+
+        CommandController.bindToCommand({
+            element : this.$('.x-search-cutoff'),
+            command : { name : 'cutOffUnmetMoviesSearch' }
         });
     },
 
@@ -172,7 +214,7 @@ module.exports = Marionette.Layout.extend({
         if (selected.length === 0) {
             Messenger.show({
                 type    : 'error',
-                message : 'No episodes selected'
+                message : 'No movies selected'
             });
 
             return;
@@ -180,9 +222,18 @@ module.exports = Marionette.Layout.extend({
 
         var ids = _.pluck(selected, 'id');
 
-        CommandController.Execute('episodeSearch', {
-            name       : 'episodeSearch',
-            episodeIds : ids
+        CommandController.Execute('moviesSearch', {
+            name       : 'moviesSearch',
+            movieIds : ids
         });
-    }
+    },
+
+    _searchMissing  : function() {
+        if (window.confirm('Are you sure you want to search for {0} filtered missing movies? '.format(this.collection.state.totalRecords) +
+                           'One API request to each indexer will be used for each movie. ' + 'This cannot be stopped once started.')) {
+            CommandController.Execute('cutOffUnmetMoviesSearch', { name : 'cutOffUnmetMoviesSearch',
+                                                           filterKey : this.collection.state.filterKey,
+                                   filterValue : this.collection.state.filterValue });
+        }
+    },
 });

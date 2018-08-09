@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Globalization;
 using System.Linq;
+using System.Linq.Expressions;
 using Newtonsoft.Json;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Datastore;
@@ -33,22 +34,33 @@ namespace NzbDrone.Core.MediaFiles.MediaInfo
         {
             get
             {
-                if (AudioChannelPositions.IsNullOrWhiteSpace())
-                {
-                    if (AudioChannelPositionsText.IsNullOrWhiteSpace())
-                    {
-                        if (SchemaRevision >= 3)
-                        {
-                            return AudioChannels;
-                        }
+				try
+				{
+					return
+					AudioChannelPositions.Replace("Object Based /", "").Replace(" / ", "$")
+						.Split('$')
+						.First()
+						.Split('/')
+						.Sum(s => decimal.Parse(s, CultureInfo.InvariantCulture));
+				}
+				catch
+				{
 
-                        return 0;
-                    }
+						if (AudioChannelPositionsText.IsNullOrWhiteSpace())
+						{
+							if (SchemaRevision >= 3)
+							{
+								return AudioChannels;
+							}
 
-                    return AudioChannelPositionsText.ContainsIgnoreCase("LFE") ? AudioChannels - 1 + 0.1m : AudioChannels;
-                }
+							return 0;
+						}
 
-                return AudioChannelPositions.Split('/').Sum(s => decimal.Parse(s, CultureInfo.InvariantCulture));
+						return AudioChannelPositionsText.ContainsIgnoreCase("LFE") ? AudioChannels - 1 + 0.1m : AudioChannels;
+
+
+				}
+
             }
         }
     }

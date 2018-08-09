@@ -5,24 +5,18 @@ namespace NzbDrone.Core.MediaFiles.Commands
 {
     public class RenameFilesCommand : Command
     {
-        public int SeriesId { get; set; }
+        public int MovieId { get; set; }
         public List<int> Files { get; set; }
 
-        public override bool SendUpdatesToClient
-        {
-            get
-            {
-                return true;
-            }
-        }
+        public override bool SendUpdatesToClient => true;
 
         public RenameFilesCommand()
         {
         }
 
-        public RenameFilesCommand(int seriesId, List<int> files)
+        public RenameFilesCommand(int movieId, List<int> files)
         {
-            SeriesId = seriesId;
+            MovieId = movieId;
             Files = files;
         }
     }

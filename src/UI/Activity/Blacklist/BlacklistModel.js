@@ -1,17 +1,16 @@
 var Backbone = require('backbone');
-var SeriesCollection = require('../../Series/SeriesCollection');
+var MovieModel = require('../../Movies/MovieModel');
+var MoviesCollection = require('../../Movies/FullMovieCollection');
 
 module.exports = Backbone.Model.extend({
-
-    //Hack to deal with Backbone 1.0's bug
-    initialize : function() {
-        this.url = function() {
-            return this.collection.url + '/' + this.get('id');
-        };
-    },
-
     parse : function(model) {
-        model.series = SeriesCollection.get(model.seriesId);
+
+        //if (model.movie) {
+        //    model.movie = new MovieModel(model.movie);
+        //}
+
+		model.movie = MoviesCollection.get(model.movieId);
+
         return model;
     }
 });

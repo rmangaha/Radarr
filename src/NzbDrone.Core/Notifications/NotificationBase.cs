@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using FluentValidation.Results;
 using NzbDrone.Core.ThingiProvider;
-using NzbDrone.Core.Tv;
+using NzbDrone.Core.Movies;
 
 namespace NzbDrone.Core.Notifications
 {
@@ -10,28 +10,13 @@ namespace NzbDrone.Core.Notifications
     {
         public abstract string Name { get; }
 
-        public Type ConfigContract
-        {
-            get
-            {
-                return typeof(TSettings);
-            }
-        }
+        public Type ConfigContract => typeof(TSettings);
 
-        public virtual ProviderMessage Message
-        {
-            get
-            {
-                return null;
-            }
-        }
+        public virtual ProviderMessage Message => null;
 
-        public IEnumerable<ProviderDefinition> DefaultDefinitions
+        public IEnumerable<ProviderDefinition> GetDefaultDefinitions()
         {
-            get
-            {
-                return new List<ProviderDefinition>();
-            }
+            return new List<ProviderDefinition>();
         }
 
         public ProviderDefinition Definition { get; set; }
@@ -41,20 +26,14 @@ namespace NzbDrone.Core.Notifications
 
         public abstract void OnGrab(GrabMessage grabMessage);
         public abstract void OnDownload(DownloadMessage message); 
-        public abstract void OnRename(Series series);
+        public abstract void OnMovieRename(Movie movie);
 
-        public virtual bool SupportsOnGrab { get { return true; } }
-        public virtual bool SupportsOnDownload { get { return true; } }
-        public virtual bool SupportsOnUpgrade { get { return true; } }
-        public virtual bool SupportsOnRename { get { return true; } }
+        public virtual bool SupportsOnGrab => true;
+        public virtual bool SupportsOnDownload => true;
+        public virtual bool SupportsOnUpgrade => true;
+        public virtual bool SupportsOnRename => true;
 
-        protected TSettings Settings
-        {
-            get
-            {
-                return (TSettings)Definition.Settings;
-            }
-        }
+        protected TSettings Settings => (TSettings)Definition.Settings;
 
         public override string ToString()
         {

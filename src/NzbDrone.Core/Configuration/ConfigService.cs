@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NLog;
@@ -8,12 +8,13 @@ using NzbDrone.Core.Configuration.Events;
 using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Common.Http.Proxy;
+using NzbDrone.Core.Parser;
 
 namespace NzbDrone.Core.Configuration
 {
     public enum ConfigKey
     {
-        DownloadedEpisodesFolder
+        DownloadedMoviesFolder
     }
 
     public class ConfigService : IConfigService
@@ -73,11 +74,11 @@ namespace NzbDrone.Core.Configuration
             return _repository.Get(key.ToLower()) != null;
         }
 
-        public string DownloadedEpisodesFolder
+        public string DownloadedMoviesFolder
         {
-            get { return GetValue(ConfigKey.DownloadedEpisodesFolder.ToString()); }
+            get { return GetValue(ConfigKey.DownloadedMoviesFolder.ToString()); }
 
-            set { SetValue(ConfigKey.DownloadedEpisodesFolder.ToString(), value); }
+            set { SetValue(ConfigKey.DownloadedMoviesFolder.ToString(), value); }
         }
 
         public bool AutoUnmonitorPreviouslyDownloadedEpisodes
@@ -100,9 +101,80 @@ namespace NzbDrone.Core.Configuration
 
         public int RssSyncInterval
         {
-            get { return GetValueInt("RssSyncInterval", 15); }
+            get { return GetValueInt("RssSyncInterval", 60); }
 
             set { SetValue("RssSyncInterval", value); }
+        }
+
+        public int AvailabilityDelay
+        {
+            get { return GetValueInt("AvailabilityDelay", 0); }
+            set { SetValue("AvailabilityDelay", value); }
+        }
+
+        public int NetImportSyncInterval
+        {
+            get { return GetValueInt("NetImportSyncInterval", 60); }
+
+            set { SetValue("NetImportSyncInterval", value); }
+        }
+
+        public string TraktAuthToken
+        {
+            get { return GetValue("TraktAuthToken", string.Empty); }
+
+            set { SetValue("TraktAuthToken", value); }
+        }
+
+        public string TraktRefreshToken
+        {
+            get { return GetValue("TraktRefreshToken", string.Empty); }
+
+            set { SetValue("TraktRefreshToken", value); }
+        }
+
+        public int TraktTokenExpiry
+        {
+            get { return GetValueInt("TraktTokenExpiry", 0); }
+
+            set { SetValue("TraktTokenExpiry", value); }
+        }
+
+        public string NewTraktAuthToken
+        {
+            get { return GetValue("NewTraktAuthToken", string.Empty); }
+            set { SetValue("NewTraktAuthToken", value); }
+        }
+
+        public string NewTraktRefreshToken
+        {
+            get { return GetValue("NewTraktRefreshToken", string.Empty); }
+            set { SetValue("NewTraktRefreshToken", value); }
+        }
+
+        public int NewTraktTokenExpiry
+        {
+            get { return GetValueInt("NewTraktTokenExpiry", 0); }
+            set { SetValue("NewTraktTokenExpiry", value); }
+        }
+
+        public string ListSyncLevel
+        {
+            get { return GetValue("ListSyncLevel", "disabled"); }
+            set { SetValue("ListSyncLevel", value); }
+        }
+
+        public string ImportExclusions
+        {
+            get { return GetValue("ImportExclusions", string.Empty); }
+            set { SetValue("ImportExclusions", value); }
+        }
+
+        public int MaximumSize
+        {
+            get { return GetValueInt("MaximumSize", 0); }
+
+            set { SetValue("MaximumSize", value); }
         }
 
         public int MinimumAge
@@ -124,6 +196,33 @@ namespace NzbDrone.Core.Configuration
             get { return GetValueBoolean("EnableCompletedDownloadHandling", true); }
 
             set { SetValue("EnableCompletedDownloadHandling", value); }
+        }
+
+        public bool PreferIndexerFlags
+        {
+            get { return GetValueBoolean("PreferIndexerFlags", false); }
+
+            set { SetValue("PreferIndexerFlags", value); }
+        }
+
+        public bool AllowHardcodedSubs
+        {
+            get { return GetValueBoolean("AllowHardcodedSubs", false); }
+
+            set { SetValue("AllowHardcodedSubs", value); }
+        }
+
+        public string WhitelistedHardcodedSubs
+        {
+            get { return GetValue("WhitelistedHardcodedSubs", ""); }
+
+            set { SetValue("WhitelistedHardcodedSubs", value); }
+        }
+
+        public ParsingLeniencyType ParsingLeniency
+        {
+            get { return GetValueEnum<ParsingLeniencyType>("ParsingLeniency", ParsingLeniencyType.Strict); }
+            set { SetValue("ParsingLeniency", value); }
         }
 
         public bool RemoveCompletedDownloads
@@ -167,11 +266,11 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("DownloadClientWorkingFolders", value); }
         }
 
-        public int DownloadedEpisodesScanInterval
+        public int DownloadedMoviesScanInterval
         {
-            get { return GetValueInt("DownloadedEpisodesScanInterval", 1); }
+            get { return GetValueInt("DownloadedMoviesScanInterval", 0); }
 
-            set { SetValue("DownloadedEpisodesScanInterval", value); }
+            set { SetValue("DownloadedMoviesScanInterval", value); }
         }
 
         public int DownloadClientHistoryLimit
@@ -202,11 +301,32 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("EnableMediaInfo", value); }
         }
 
+        public bool ImportExtraFiles
+        {
+            get { return GetValueBoolean("ImportExtraFiles", false); }
+
+            set { SetValue("ImportExtraFiles", value); }
+        }
+
         public string ExtraFileExtensions
         {
-            get { return GetValue("ExtraFileExtensions", ""); }
+            get { return GetValue("ExtraFileExtensions", "srt"); }
 
             set { SetValue("ExtraFileExtensions", value); }
+        }
+
+        public bool AutoRenameFolders
+        {
+            get { return GetValueBoolean("AutoRenameFolders", false); }
+
+            set { SetValue("AutoRenameFolders", value); }
+        }
+
+        public bool PathsDefaultStatic
+        {
+            get { return GetValueBoolean("PathsDefaultStatic", true); }
+
+            set { SetValue("PathsDefaultStatic", value); }
         }
 
         public bool SetPermissionsLinux
@@ -300,65 +420,29 @@ namespace NzbDrone.Core.Configuration
             set { SetValue("CleanupMetadataImages", value); }
         }
 
-        public string RijndaelPassphrase
-        {
-            get { return GetValue("RijndaelPassphrase", Guid.NewGuid().ToString(), true); }
-        }
+        public string RijndaelPassphrase => GetValue("RijndaelPassphrase", Guid.NewGuid().ToString(), true);
 
-        public string HmacPassphrase
-        {
-            get { return GetValue("HmacPassphrase", Guid.NewGuid().ToString(), true); }
-        }
+        public string HmacPassphrase => GetValue("HmacPassphrase", Guid.NewGuid().ToString(), true);
 
-        public string RijndaelSalt
-        {
-            get { return GetValue("RijndaelSalt", Guid.NewGuid().ToString(), true); }
-        }
+        public string RijndaelSalt => GetValue("RijndaelSalt", Guid.NewGuid().ToString(), true);
 
-        public string HmacSalt
-        {
-            get { return GetValue("HmacSalt", Guid.NewGuid().ToString(), true); }
-        }
+        public string HmacSalt => GetValue("HmacSalt", Guid.NewGuid().ToString(), true);
 
-        public bool ProxyEnabled
-        {
-            get { return GetValueBoolean("ProxyEnabled", false); }
-        }
+        public bool ProxyEnabled => GetValueBoolean("ProxyEnabled", false);
 
-        public ProxyType ProxyType
-        {
-            get { return GetValueEnum<ProxyType>("ProxyType", ProxyType.Http); }
-        }
+        public ProxyType ProxyType => GetValueEnum<ProxyType>("ProxyType", ProxyType.Http);
 
-        public string ProxyHostname
-        {
-            get { return GetValue("ProxyHostname", string.Empty); }
-        }
+        public string ProxyHostname => GetValue("ProxyHostname", string.Empty);
 
-        public int ProxyPort
-        {
-            get { return GetValueInt("ProxyPort", 8080); }
-        }
+        public int ProxyPort => GetValueInt("ProxyPort", 8080);
 
-        public string ProxyUsername
-        {
-            get { return GetValue("ProxyUsername", string.Empty); }
-        }
+        public string ProxyUsername => GetValue("ProxyUsername", string.Empty);
 
-        public string ProxyPassword
-        {
-            get { return GetValue("ProxyPassword", string.Empty); }
-        }
+        public string ProxyPassword => GetValue("ProxyPassword", string.Empty);
 
-        public string ProxyBypassFilter
-        {
-            get { return GetValue("ProxyBypassFilter", string.Empty); }
-        }
+        public string ProxyBypassFilter => GetValue("ProxyBypassFilter", string.Empty);
 
-        public bool ProxyBypassLocalAddresses
-        {
-            get { return GetValueBoolean("ProxyBypassLocalAddresses", true); }
-        }
+        public bool ProxyBypassLocalAddresses => GetValueBoolean("ProxyBypassLocalAddresses", true);
 
         private string GetValue(string key)
         {

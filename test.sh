@@ -9,9 +9,9 @@ if [ -d "$TEST_DIR/_tests" ]; then
   TEST_DIR="$TEST_DIR/_tests"
 fi
 
-NUNIT="$TEST_DIR/NUnit.ConsoleRunner.3.2.0/tools/nunit3-console.exe"
+NUNIT="$TEST_DIR/NUnit.ConsoleRunner.3.2.1/tools/nunit3-console.exe"
 NUNIT_COMMAND="$NUNIT"
-NUNIT_PARAMS="--teamcity"
+NUNIT_PARAMS="--result=$TEST_DIR/reports/junit/results-$TYPE.xml;transform=.circleci/nunit3-junit.xslt --agents=12 --config=Debug"
 
 if [ "$PLATFORM" = "Windows" ]; then
   WHERE="$WHERE && cat != LINUX"
@@ -46,7 +46,7 @@ EXIT_CODE=$?
 
 if [ "$EXIT_CODE" -ge 0 ]; then
   echo "Failed tests: $EXIT_CODE"
-  exit 0
+  exit $EXIT_CODE
 else
   exit $EXIT_CODE
 fi

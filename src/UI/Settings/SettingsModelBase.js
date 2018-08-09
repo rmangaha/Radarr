@@ -8,6 +8,7 @@ var model = DeepModel.extend({
     initialize : function() {
         this.listenTo(vent, vent.Commands.SaveSettings, this.saveSettings);
         this.listenTo(this, 'destroy', this._stopListening);
+
     },
 
     saveSettings : function() {
@@ -19,6 +20,7 @@ var model = DeepModel.extend({
                 successMessage : this.successMessage,
                 errorMessage   : this.errorMessage
             });
+
 
             return savePromise;
         }

@@ -73,12 +73,14 @@ namespace NzbDrone.Core.Indexers
             return releases;
         }
 
+        public Action<IDictionary<string, string>, DateTime?> CookiesUpdater { get; set; }
+
         protected virtual XDocument LoadXmlDocument(IndexerResponse indexerResponse)
         {
             try
             {
-                var content = indexerResponse.Content;
-                content = ReplaceEntities.Replace(content, ReplaceEntity);
+                var content = XmlCleaner.ReplaceEntities(indexerResponse.Content);
+                content = XmlCleaner.ReplaceUnicode(content);
 
                 using (var xmlTextReader = XmlReader.Create(new StringReader(content), new XmlReaderSettings { DtdProcessing = DtdProcessing.Ignore, IgnoreComments = true }))
                 {
@@ -94,19 +96,6 @@ namespace NzbDrone.Core.Indexers
                 ex.Data.Add("ContentSample", contentSample);
 
                 throw;
-            }
-        }
-
-        protected virtual string ReplaceEntity(Match match)
-        {
-            try
-            {
-                var character = WebUtility.HtmlDecode(match.Value);
-                return string.Concat("&#", (int)character[0], ";");
-            }
-            catch
-            {
-                return match.Value;
             }
         }
 
@@ -312,7 +301,7 @@ namespace NzbDrone.Core.Indexers
 
         public static long ParseSize(string sizeString, bool defaultToBinaryPrefix)
         {
-            if (sizeString.All(char.IsDigit))
+            if (sizeString.Length > 0 && sizeString.All(char.IsDigit))
             {
                 return long.Parse(sizeString);
             }

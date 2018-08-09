@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using NzbDrone.Api.REST;
 using NzbDrone.Core.Qualities;
@@ -35,7 +34,7 @@ namespace NzbDrone.Api.Qualities
                 Weight = model.Weight,
 
                 MinSize = model.MinSize,
-                MaxSize = model.MaxSize
+                MaxSize = model.MaxSize,
             };
         }
 
@@ -54,7 +53,7 @@ namespace NzbDrone.Api.Qualities
                 Weight = resource.Weight,
 
                 MinSize = resource.MinSize,
-                MaxSize = resource.MaxSize
+                MaxSize = resource.MaxSize,
             };
         }
 

@@ -1,7 +1,6 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Nancy.Responses;
 using NLog;
 using Nancy;
 using NzbDrone.Api.Frontend.Mappers;
@@ -36,20 +35,6 @@ namespace NzbDrone.Api.Frontend
                 path.StartsWith("/signalr", StringComparison.CurrentCultureIgnoreCase))
             {
                 return new NotFoundResponse();
-            }
-
-            //Redirect to the subfolder if the request went to the base URL
-            if (path.Equals("/"))
-            {
-                var urlBase = _configFileProvider.UrlBase;
-
-                if (!string.IsNullOrEmpty(urlBase))
-                {
-                    if (Request.Url.BasePath != urlBase)
-                    {
-                        return new RedirectResponse(urlBase  + "/");
-                    }
-                }
             }
 
             var mapper = _requestMappers.SingleOrDefault(m => m.CanHandle(path));

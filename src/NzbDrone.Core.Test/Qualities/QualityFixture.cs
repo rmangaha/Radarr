@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using FluentAssertions;
 using NUnit.Framework;
@@ -23,7 +24,7 @@ namespace NzbDrone.Core.Test.Qualities
                         new object[] {7, Quality.Bluray1080p},
                         new object[] {8, Quality.WEBDL480p},
                         new object[] {9, Quality.HDTV1080p},
-                        new object[] {10, Quality.RAWHD},
+                        //new object[] {10, Quality.RAWHD},
                         new object[] {16, Quality.HDTV2160p},
                         new object[] {18, Quality.WEBDL2160p},
                         new object[] {19, Quality.Bluray2160p},
@@ -41,7 +42,7 @@ namespace NzbDrone.Core.Test.Qualities
                         new object[] {Quality.Bluray1080p, 7},
                         new object[] {Quality.WEBDL480p, 8},
                         new object[] {Quality.HDTV1080p, 9},
-                        new object[] {Quality.RAWHD, 10},
+                        //new object[] {Quality.RAWHD, 10},
                         new object[] {Quality.HDTV2160p, 16},
                         new object[] {Quality.WEBDL2160p, 18},
                         new object[] {Quality.Bluray2160p, 19},
@@ -65,20 +66,27 @@ namespace NzbDrone.Core.Test.Qualities
         {
             var qualities = new List<Quality>
             {
-                Quality.Unknown,
+                Quality.CAM,
+                Quality.TELECINE,
+                Quality.DVDSCR,
+                Quality.REGIONAL,
                 Quality.SDTV,
-                Quality.WEBDL480p,
                 Quality.DVD,
+                Quality.DVDR,
                 Quality.HDTV720p,
                 Quality.HDTV1080p,
                 Quality.HDTV2160p,
-                Quality.RAWHD,
+                Quality.WEBDL480p,
                 Quality.WEBDL720p,
                 Quality.WEBDL1080p,
                 Quality.WEBDL2160p,
+                Quality.Bluray480p,
+                Quality.Bluray576p,
                 Quality.Bluray720p,
                 Quality.Bluray1080p,
                 Quality.Bluray2160p,
+                Quality.BRDISK,
+                Quality.RAWHD
             };
 
             if (allowed.Length == 0)
@@ -87,7 +95,11 @@ namespace NzbDrone.Core.Test.Qualities
             var items = qualities
                 .Except(allowed)
                 .Concat(allowed)
-                .Select(v => new ProfileQualityItem { Quality = v, Allowed = allowed.Contains(v) }).ToList();
+                .Select(v => new ProfileQualityItem
+                {
+                    Quality = v,
+                    Allowed = allowed.Contains(v)
+                }).ToList();
 
             return items;
         }

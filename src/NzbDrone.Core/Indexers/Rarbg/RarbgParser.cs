@@ -1,8 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Text.RegularExpressions;
-using Newtonsoft.Json.Linq;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Indexers.Exceptions;
 using NzbDrone.Core.Parser.Model;
@@ -31,9 +30,10 @@ namespace NzbDrone.Core.Indexers.Rarbg
 
             if (jsonResponse.Resource.error_code.HasValue)
             {
-                if (jsonResponse.Resource.error_code == 20 || jsonResponse.Resource.error_code == 8)
+                if (jsonResponse.Resource.error_code == 20 || jsonResponse.Resource.error_code == 8
+                    || jsonResponse.Resource.error_code == 9 || jsonResponse.Resource.error_code == 10)
                 {
-                    // No results found
+                    // No results or imdbid not found
                     return results;
                 }
 
@@ -58,16 +58,16 @@ namespace NzbDrone.Core.Indexers.Rarbg
                 torrentInfo.Seeders = torrent.seeders;
                 torrentInfo.Peers = torrent.leechers + torrent.seeders;
 
-                if (torrent.episode_info != null)
+                if (torrent.movie_info != null)
                 {
-                    if (torrent.episode_info.tvdb != null)
+                    if (torrent.movie_info.tvdb != null)
                     {
-                        torrentInfo.TvdbId = torrent.episode_info.tvdb.Value;
+                        torrentInfo.TvdbId = torrent.movie_info.tvdb.Value;
                     }
 
-                    if (torrent.episode_info.tvrage != null)
+                    if (torrent.movie_info.tvrage != null)
                     {
-                        torrentInfo.TvRageId = torrent.episode_info.tvrage.Value;
+                        torrentInfo.TvRageId = torrent.movie_info.tvrage.Value;
                     }
                 }
 
@@ -76,6 +76,8 @@ namespace NzbDrone.Core.Indexers.Rarbg
 
             return results;
         }
+
+        public Action<IDictionary<string, string>, DateTime?> CookiesUpdater { get; set; }
 
         private string GetGuid(RarbgTorrent torrent)
         {

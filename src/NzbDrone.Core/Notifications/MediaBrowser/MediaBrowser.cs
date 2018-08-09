@@ -1,8 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using FluentValidation.Results;
 using NzbDrone.Common.Extensions;
-using NzbDrone.Core.Tv;
+using NzbDrone.Core.Movies;
 
 namespace NzbDrone.Core.Notifications.MediaBrowser
 {
@@ -15,14 +14,11 @@ namespace NzbDrone.Core.Notifications.MediaBrowser
             _mediaBrowserService = mediaBrowserService;
         }
 
-        public override string Link
-        {
-            get { return "http://mediabrowser.tv/"; }
-        }
+        public override string Link => "http://mediabrowser.tv/";
 
         public override void OnGrab(GrabMessage grabMessage)
         {
-            const string title = "Sonarr - Grabbed";
+            const string title = "Radarr - Movie Grabbed";
 
             if (Settings.Notify)
             {
@@ -32,7 +28,7 @@ namespace NzbDrone.Core.Notifications.MediaBrowser
 
         public override void OnDownload(DownloadMessage message)
         {
-            const string title = "Sonarr - Downloaded";
+            const string title = "Radarr - Movie Downloaded";
 
             if (Settings.Notify)
             {
@@ -41,25 +37,19 @@ namespace NzbDrone.Core.Notifications.MediaBrowser
 
             if (Settings.UpdateLibrary)
             {
-                _mediaBrowserService.Update(Settings, message.Series);
+                _mediaBrowserService.UpdateMovies(Settings, message.Movie);
             }
         }
 
-        public override void OnRename(Series series)
+        public override void OnMovieRename(Movie movie)
         {
             if (Settings.UpdateLibrary)
             {
-                _mediaBrowserService.Update(Settings, series);
+                _mediaBrowserService.UpdateMovies(Settings, movie);
             }
         }
 
-        public override string Name
-        {
-            get
-            {
-                return "Emby (Media Browser)";
-            }
-        }
+        public override string Name => "Emby (Media Browser)";
 
         public override ValidationResult Test()
         {

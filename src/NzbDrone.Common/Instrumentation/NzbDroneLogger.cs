@@ -63,7 +63,7 @@ namespace NzbDrone.Common.Instrumentation
         {
             var target = new LogentriesTarget();
             target.Name = "logentriesTarget";
-            target.Token = "d3a83ee9-74fb-4045-ad25-a84c1d4d7c81";
+            target.Token = "7688c9ac-015f-45c7-bfee-73f370f5f380";
             target.LogHostname = true;
             target.Debug = false;
 
@@ -103,9 +103,9 @@ namespace NzbDrone.Common.Instrumentation
 
         private static void RegisterAppFile(IAppFolderInfo appFolderInfo)
         {
-            RegisterAppFile(appFolderInfo, "appFileInfo", "sonarr.txt", 5, LogLevel.Info);
-            RegisterAppFile(appFolderInfo, "appFileDebug", "sonarr.debug.txt", 50, LogLevel.Off);
-            RegisterAppFile(appFolderInfo, "appFileTrace", "sonarr.trace.txt", 50, LogLevel.Off);
+            RegisterAppFile(appFolderInfo, "appFileInfo", "radarr.txt", 5, LogLevel.Info);
+            RegisterAppFile(appFolderInfo, "appFileDebug", "radarr.debug.txt", 50, LogLevel.Off);
+            RegisterAppFile(appFolderInfo, "appFileTrace", "radarr.trace.txt", 50, LogLevel.Off);
         }
 
         private static LoggingRule RegisterAppFile(IAppFolderInfo appFolderInfo, string name, string fileName, int maxArchiveFiles, LogLevel minLogLevel)

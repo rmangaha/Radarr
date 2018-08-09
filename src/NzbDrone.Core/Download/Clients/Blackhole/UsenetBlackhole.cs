@@ -1,14 +1,12 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using FluentValidation.Results;
 using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
-using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.RemotePathMappings;
@@ -24,19 +22,20 @@ namespace NzbDrone.Core.Download.Clients.Blackhole
         public UsenetBlackhole(IScanWatchFolder scanWatchFolder,
                                IHttpClient httpClient,
                                IConfigService configService,
+                               INamingConfigService namingConfigService,
                                IDiskProvider diskProvider,
                                IRemotePathMappingService remotePathMappingService,
                                Logger logger)
-            : base(httpClient, configService, diskProvider, remotePathMappingService, logger)
+            : base(httpClient, configService, namingConfigService, diskProvider, remotePathMappingService, logger)
         {
             _scanWatchFolder = scanWatchFolder;
 
             ScanGracePeriod = TimeSpan.FromSeconds(30);
         }
 
-        protected override string AddFromNzbFile(RemoteEpisode remoteEpisode, string filename, byte[] fileContent)
+        protected override string AddFromNzbFile(RemoteMovie remoteMovie, string filename, byte[] fileContents)
         {
-            var title = remoteEpisode.Release.Title;
+            var title = remoteMovie.Release.Title;
 
             title = FileNameBuilder.CleanFileName(title);
 
@@ -44,7 +43,7 @@ namespace NzbDrone.Core.Download.Clients.Blackhole
 
             using (var stream = _diskProvider.OpenWriteStream(filepath))
             {
-                stream.Write(fileContent, 0, fileContent.Length);
+                stream.Write(fileContents, 0, fileContents.Length);
             }
 
             _logger.Debug("NZB Download succeeded, saved to: {0}", filepath);
@@ -52,13 +51,7 @@ namespace NzbDrone.Core.Download.Clients.Blackhole
             return null;
         }
 
-        public override string Name
-        {
-            get
-            {
-                return "Usenet Blackhole";
-            }
-        }
+        public override string Name => "Usenet Blackhole";
 
         public override IEnumerable<DownloadClientItem> GetItems()
         {
@@ -68,7 +61,7 @@ namespace NzbDrone.Core.Download.Clients.Blackhole
                 {
                     DownloadClient = Definition.Name,
                     DownloadId = Definition.Name + "_" + item.DownloadId,
-                    Category = "sonarr",
+                    Category = "Radarr",
                     Title = item.Title,
 
                     TotalSize = item.TotalSize,

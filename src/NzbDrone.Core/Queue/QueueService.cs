@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using NzbDrone.Common.Crypto;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.Messaging.Events;
-using NzbDrone.Core.Tv;
+using NzbDrone.Core.Movies;
 
 namespace NzbDrone.Core.Queue
 {
@@ -44,27 +44,18 @@ namespace NzbDrone.Core.Queue
 
         private IEnumerable<Queue> MapQueue(TrackedDownload trackedDownload)
         {
-            if (trackedDownload.RemoteEpisode.Episodes != null && trackedDownload.RemoteEpisode.Episodes.Any())
+            if (trackedDownload.RemoteMovie != null && trackedDownload.RemoteMovie.Movie != null)
             {
-                foreach (var episode in trackedDownload.RemoteEpisode.Episodes)
-                {
-                    yield return MapEpisode(trackedDownload, episode);
-                }
-            }
-            else
-            {
-                // FIXME: Present queue items with unknown series/episodes
+                yield return MapMovie(trackedDownload, trackedDownload.RemoteMovie.Movie);
             }
         }
 
-        private Queue MapEpisode(TrackedDownload trackedDownload, Episode episode)
+        private Queue MapMovie(TrackedDownload trackedDownload, Movie movie)
         {
             var queue = new Queue
             {
-                Id = HashConverter.GetHashInt31(string.Format("trackedDownload-{0}-ep{1}", trackedDownload.DownloadItem.DownloadId, episode.Id)),
-                Series = trackedDownload.RemoteEpisode.Series,
-                Episode = episode,
-                Quality = trackedDownload.RemoteEpisode.ParsedEpisodeInfo.Quality,
+                Id = HashConverter.GetHashInt31(string.Format("trackedDownload-{0}", trackedDownload.DownloadItem.DownloadId)),
+                Quality = trackedDownload.RemoteMovie.ParsedMovieInfo.Quality,
                 Title = trackedDownload.DownloadItem.Title,
                 Size = trackedDownload.DownloadItem.TotalSize,
                 Sizeleft = trackedDownload.DownloadItem.RemainingSize,
@@ -72,9 +63,10 @@ namespace NzbDrone.Core.Queue
                 Status = trackedDownload.DownloadItem.Status.ToString(),
                 TrackedDownloadStatus = trackedDownload.Status.ToString(),
                 StatusMessages = trackedDownload.StatusMessages.ToList(),
-                RemoteEpisode = trackedDownload.RemoteEpisode,
+                RemoteMovie = trackedDownload.RemoteMovie,
                 DownloadId = trackedDownload.DownloadItem.DownloadId,
-                Protocol = trackedDownload.Protocol
+                Protocol = trackedDownload.Protocol,
+                Movie = movie
             };
 
             if (queue.Timeleft.HasValue)

@@ -1,5 +1,4 @@
-﻿using System;
-using Moq;
+﻿using Moq;
 using NUnit.Framework;
 using NzbDrone.Common.Disk;
 using NzbDrone.Core.Configuration;
@@ -16,7 +15,7 @@ namespace NzbDrone.Core.Test.HealthCheck.Checks
         private void GivenDroneFactoryFolder(bool exists = false, bool writable = true)
         {
             Mocker.GetMock<IConfigService>()
-                  .SetupGet(s => s.DownloadedEpisodesFolder)
+                  .SetupGet(s => s.DownloadedMoviesFolder)
                   .Returns(DRONE_FACTORY_FOLDER);
 
             Mocker.GetMock<IDiskProvider>()

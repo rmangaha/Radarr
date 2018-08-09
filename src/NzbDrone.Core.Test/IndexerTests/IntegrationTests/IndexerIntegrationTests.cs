@@ -1,13 +1,10 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
 using NUnit.Framework;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Indexers;
-using NzbDrone.Core.Indexers.Fanzub;
-using NzbDrone.Core.Indexers.KickassTorrents;
 using NzbDrone.Core.Indexers.Nyaa;
-using NzbDrone.Core.Indexers.Wombles;
 using NzbDrone.Core.IndexerSearch.Definitions;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
@@ -17,80 +14,20 @@ using NzbDrone.Test.Common.Categories;
 namespace NzbDrone.Core.Test.IndexerTests.IntegrationTests
 {
     [IntegrationTest]
+    [Ignore("Nyaa is down!")]
     public class IndexerIntegrationTests : CoreTest
     {
-        private SingleEpisodeSearchCriteria _singleSearchCriteria;
-        private AnimeEpisodeSearchCriteria _animeSearchCriteria;
+        private MovieSearchCriteria _singleSearchCriteria;
 
         [SetUp]
         public void SetUp()
         {
             UseRealHttp();
 
-            _singleSearchCriteria = new SingleEpisodeSearchCriteria()
+            _singleSearchCriteria = new MovieSearchCriteria()
                 {
                     SceneTitles = new List<string> { "Person of Interest" },
-                    SeasonNumber = 1,
-                    EpisodeNumber = 1
                 };
-
-            _animeSearchCriteria = new AnimeEpisodeSearchCriteria()
-            {
-                SceneTitles = new List<string> { "Steins;Gate" },
-                AbsoluteEpisodeNumber = 1
-            };
-        }
-
-        [Test]
-        public void wombles_fetch_recent()
-        {
-            var indexer = Mocker.Resolve<Wombles>();
-
-            indexer.Definition = new IndexerDefinition
-            {
-                Name = "MyIndexer",
-                Settings = NullConfig.Instance
-            };
-
-            var result = indexer.FetchRecent();
-
-            ValidateResult(result);
-        }
-
-        [Test]
-        [ManualTest]
-        [Explicit]
-        public void kickass_fetch_recent()
-        {
-            var indexer = Mocker.Resolve<KickassTorrents>();
-
-            indexer.Definition = new IndexerDefinition
-            {
-                Name = "MyIndexer",
-                Settings = new KickassTorrentsSettings()
-            };
-
-            var result = indexer.FetchRecent();
-
-            ValidateTorrentResult(result, hasSize: true);
-        }
-
-        [Test]
-        [ManualTest]
-        [Explicit]
-        public void kickass_search_single()
-        {
-            var indexer = Mocker.Resolve<KickassTorrents>();
-
-            indexer.Definition = new IndexerDefinition
-            {
-                Name = "MyIndexer",
-                Settings = new KickassTorrentsSettings()
-            };
-
-            var result = indexer.Fetch(_singleSearchCriteria);
-
-            ValidateTorrentResult(result, hasSize: true, hasMagnet: true);
         }
 
         [Test]
@@ -120,7 +57,7 @@ namespace NzbDrone.Core.Test.IndexerTests.IntegrationTests
                 Settings = new NyaaSettings()
             };
 
-            var result = indexer.Fetch(_animeSearchCriteria);
+            var result = indexer.Fetch(_singleSearchCriteria);
 
             ValidateTorrentResult(result, hasSize: true);
         }

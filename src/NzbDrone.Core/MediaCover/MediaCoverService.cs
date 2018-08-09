@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -9,20 +9,21 @@ using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Messaging.Events;
-using NzbDrone.Core.Tv;
-using NzbDrone.Core.Tv.Events;
+using NzbDrone.Core.Movies;
+using NzbDrone.Core.Movies.Events;
 
 namespace NzbDrone.Core.MediaCover
 {
     public interface IMapCoversToLocal
     {
-        void ConvertToLocalUrls(int seriesId, IEnumerable<MediaCover> covers);
-        string GetCoverPath(int seriesId, MediaCoverTypes mediaCoverTypes, int? height = null);
+        void ConvertToLocalUrls(int movieId, IEnumerable<MediaCover> covers);
+        string GetCoverPath(int movieId, MediaCoverTypes mediaCoverTypes, int? height = null);
     }
 
     public class MediaCoverService :
-        IHandleAsync<SeriesUpdatedEvent>,
-        IHandleAsync<SeriesDeletedEvent>,
+        IHandleAsync<MovieUpdatedEvent>,
+        IHandleAsync<MovieAddedEvent>,
+        IHandleAsync<MovieDeletedEvent>,
         IMapCoversToLocal
     {
         private readonly IImageResizer _resizer;
@@ -55,70 +56,88 @@ namespace NzbDrone.Core.MediaCover
             _coverRootFolder = appFolderInfo.GetMediaCoverPath();
         }
 
-        public string GetCoverPath(int seriesId, MediaCoverTypes coverTypes, int? height = null)
+        public string GetCoverPath(int movieId, MediaCoverTypes coverTypes, int? height = null)
         {
             var heightSuffix = height.HasValue ? "-" + height.ToString() : "";
 
-            return Path.Combine(GetSeriesCoverPath(seriesId), coverTypes.ToString().ToLower() + heightSuffix + ".jpg");
+            return Path.Combine(GetMovieCoverPath(movieId), coverTypes.ToString().ToLower() + heightSuffix + ".jpg");
         }
 
-        public void ConvertToLocalUrls(int seriesId, IEnumerable<MediaCover> covers)
+        public void ConvertToLocalUrls(int movieId, IEnumerable<MediaCover> covers)
         {
             foreach (var mediaCover in covers)
             {
-                var filePath = GetCoverPath(seriesId, mediaCover.CoverType);
+                var filePath = GetCoverPath(movieId, mediaCover.CoverType);
 
-                mediaCover.Url = _configFileProvider.UrlBase + @"/MediaCover/" + seriesId + "/" + mediaCover.CoverType.ToString().ToLower() + ".jpg";
+                mediaCover.Url = _configFileProvider.UrlBase + @"/MediaCover/" + movieId + "/" + mediaCover.CoverType.ToString().ToLower() + ".jpg";
 
-                if (_diskProvider.FileExists(filePath))
+                /*if (_diskProvider.FileExists(filePath))
                 {
                     var lastWrite = _diskProvider.FileGetLastWrite(filePath);
                     mediaCover.Url += "?lastWrite=" + lastWrite.Ticks;
-                }
+                }*/
             }
         }
 
-        private string GetSeriesCoverPath(int seriesId)
+        private string GetMovieCoverPath(int movieId)
         {
-            return Path.Combine(_coverRootFolder, seriesId.ToString());
+            return Path.Combine(_coverRootFolder, movieId.ToString());
         }
 
-        private void EnsureCovers(Series series)
+        private void EnsureCovers(Movie movie, int retried = 0)
         {
-            foreach (var cover in series.Images)
+            foreach (var cover in movie.Images)
             {
-                var fileName = GetCoverPath(series.Id, cover.CoverType);
+                var fileName = GetCoverPath(movie.Id, cover.CoverType);
                 var alreadyExists = false;
                 try
                 {
                     alreadyExists = _coverExistsSpecification.AlreadyExists(cover.Url, fileName);
                     if (!alreadyExists)
                     {
-                        DownloadCover(series, cover);
+                        DownloadCover(movie, cover);
                     }
                 }
                 catch (WebException e)
                 {
-                    _logger.Warn(string.Format("Couldn't download media cover for {0}. {1}", series, e.Message));
+                    if (e.Status == WebExceptionStatus.ProtocolError)
+                    {
+                        _logger.Warn(e, string.Format("Couldn't download media cover for {0}, likely the cover doesn't exist for this movie. {1}", movie, e.Message));
+                    }
+                    else
+                    {
+                        _logger.Warn(e, string.Format("Couldn't download media cover for {0}. {1}", movie, e.Message));
+                        if (retried < 3)
+                        {
+                            retried = +1;
+                            _logger.Warn("Retrying for the {0}. time in ten seconds.", retried);
+                            System.Threading.Thread.Sleep(10 * 1000);
+                            EnsureCovers(movie, retried);
+                        }
+                        else
+                        {
+                            _logger.Warn(e, "Couldn't download media cover even after retrying five times :(.");
+                        }
+                    }
                 }
                 catch (Exception e)
                 {
-                    _logger.Error(e, "Couldn't download media cover for " + series);
+                    _logger.Error(e, "Couldn't download media cover for " + movie);
                 }
 
-                EnsureResizedCovers(series, cover, !alreadyExists);
+                EnsureResizedCovers(movie, cover, !alreadyExists);
             }
         }
 
-        private void DownloadCover(Series series, MediaCover cover)
+        private void DownloadCover(Movie movie, MediaCover cover)
         {
-            var fileName = GetCoverPath(series.Id, cover.CoverType);
+            var fileName = GetCoverPath(movie.Id, cover.CoverType);
 
-            _logger.Info("Downloading {0} for {1} {2}", cover.CoverType, series, cover.Url);
+            _logger.Info("Downloading {0} for {1} {2}", cover.CoverType, movie, cover.Url);
             _httpClient.DownloadFile(cover.Url, fileName);
         }
 
-        private void EnsureResizedCovers(Series series, MediaCover cover, bool forceResize)
+        private void EnsureResizedCovers(Movie movie, MediaCover cover, bool forceResize)
         {
             int[] heights;
 
@@ -144,12 +163,12 @@ namespace NzbDrone.Core.MediaCover
 
             foreach (var height in heights)
             {
-                var mainFileName = GetCoverPath(series.Id, cover.CoverType);
-                var resizeFileName = GetCoverPath(series.Id, cover.CoverType, height);
+                var mainFileName = GetCoverPath(movie.Id, cover.CoverType);
+                var resizeFileName = GetCoverPath(movie.Id, cover.CoverType, height);
 
                 if (forceResize || !_diskProvider.FileExists(resizeFileName) || _diskProvider.GetFileSize(resizeFileName) == 0)
                 {
-                    _logger.Debug("Resizing {0}-{1} for {2}", cover.CoverType, height, series);
+                    _logger.Debug("Resizing {0}-{1} for {2}", cover.CoverType, height, movie);
 
                     try
                     {
@@ -157,21 +176,27 @@ namespace NzbDrone.Core.MediaCover
                     }
                     catch
                     {
-                        _logger.Debug("Couldn't resize media cover {0}-{1} for {2}, using full size image instead.", cover.CoverType, height, series);
+                        _logger.Debug("Couldn't resize media cover {0}-{1} for {2}, using full size image instead.", cover.CoverType, height, movie);
                     }
                 }
             }
         }
 
-        public void HandleAsync(SeriesUpdatedEvent message)
+        public void HandleAsync(MovieUpdatedEvent message)
         {
-            EnsureCovers(message.Series);
-            _eventAggregator.PublishEvent(new MediaCoversUpdatedEvent(message.Series));
+            EnsureCovers(message.Movie);
+            _eventAggregator.PublishEvent(new MediaCoversUpdatedEvent(message.Movie));
         }
 
-        public void HandleAsync(SeriesDeletedEvent message)
+        public void HandleAsync(MovieAddedEvent message)
         {
-            var path = GetSeriesCoverPath(message.Series.Id);
+            EnsureCovers(message.Movie);
+            _eventAggregator.PublishEvent(new MediaCoversUpdatedEvent(message.Movie));
+        }
+
+        public void HandleAsync(MovieDeletedEvent message)
+        {
+            var path = GetMovieCoverPath(message.Movie.Id);
             if (_diskProvider.FolderExists(path))
             {
                 _diskProvider.DeleteFolder(path, true);

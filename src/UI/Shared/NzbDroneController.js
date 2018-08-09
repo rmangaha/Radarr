@@ -3,6 +3,7 @@ var AppLayout = require('../AppLayout');
 var Marionette = require('marionette');
 var NotFoundView = require('./NotFoundView');
 var Messenger = require('./Messenger');
+var Config = require('../Config');
 
 module.exports = Marionette.AppRouter.extend({
     initialize : function() {
@@ -16,15 +17,15 @@ module.exports = Marionette.AppRouter.extend({
 
     setTitle : function(title) {
         title = title;
-        if (title === 'Sonarr') {
-            document.title = 'Sonarr';
+        if (title === 'Radarr') {
+            document.title = 'Radarr';
         } else {
-            document.title = title + ' - Sonarr';
+            document.title = title + ' - Radarr';
         }
 
         if (window.NzbDrone.Analytics && window.Piwik) {
             try {
-                var piwik = window.Piwik.getTracker(window.location.protocol + '//piwik.nzbdrone.com/piwik.php', 1);
+                var piwik = window.Piwik.getTracker(window.location.protocol + '//radarr.video/piwik/piwik.php', 1);
                 piwik.setReferrerUrl('');
                 piwik.setCustomUrl('http://local' + window.location.pathname);
                 piwik.setCustomVariable(1, 'version', window.NzbDrone.Version, 'page');
@@ -41,7 +42,7 @@ module.exports = Marionette.AppRouter.extend({
         var label = window.location.pathname === window.NzbDrone.UrlBase + '/system/updates' ? 'Reload' : 'View Changes';
 
         Messenger.show({
-            message   : 'Sonarr has been updated',
+            message   : 'Radarr has been updated, some UI configuration has been reset',
             hideAfter : 0,
             id        : 'sonarrUpdated',
             actions   : {
@@ -53,6 +54,12 @@ module.exports = Marionette.AppRouter.extend({
                 }
             }
         });
+
+        // Only for pre-release development
+        var pageSize = Config.getValue("pageSize");
+        window.localStorage.clear();
+        Config.setValue("pageSize", pageSize);
+        // Remove above when out of pre-release :)
 
         this.pendingUpdate = true;
     },

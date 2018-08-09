@@ -1,8 +1,6 @@
 using System;
-using System.Data;
 using FluentMigrator;
 using NUnit.Framework;
-using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Datastore.Migration.Framework;
 using NzbDrone.Test.Common.AutoMoq;
 
@@ -45,9 +43,6 @@ namespace NzbDrone.Core.Test.Framework
         }
 
         [Obsolete("Don't use Mocker/Repositories in MigrationTests, query the DB.", true)]
-        public new AutoMoqer Mocker
-        {
-            get { return base.Mocker; }
-        }
+        public new AutoMoqer Mocker => base.Mocker;
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using FluentValidation.Results;
@@ -20,39 +20,29 @@ namespace NzbDrone.Core.Download.Clients.Pneumatic
 
         public Pneumatic(IHttpClient httpClient,
                          IConfigService configService,
+                         INamingConfigService namingConfigService,
                          IDiskProvider diskProvider,
                          IRemotePathMappingService remotePathMappingService,
                          Logger logger)
-            : base(configService, diskProvider, remotePathMappingService, logger)
+            : base(configService, namingConfigService, diskProvider, remotePathMappingService, logger)
         {
             _httpClient = httpClient;
         }
 
-        public override string Name
-        {
-            get
-            {
-                return "Pneumatic";
-            }
-        }
+        public override string Name => "Pneumatic";
 
-        public override DownloadProtocol Protocol
-        {
-            get
-            {
-                return DownloadProtocol.Usenet;
-            }
-        }
+        public override DownloadProtocol Protocol => DownloadProtocol.Usenet;
 
-        public override string Download(RemoteEpisode remoteEpisode)
+        public override string Download(RemoteMovie remoteMovie)
         {
-            var url = remoteEpisode.Release.DownloadUrl;
-            var title = remoteEpisode.Release.Title;
+            var url = remoteMovie.Release.DownloadUrl;
+            var title = remoteMovie.Release.Title;
 
-            if (remoteEpisode.ParsedEpisodeInfo.FullSeason)
-            {
-                throw new NotSupportedException("Full season releases are not supported with Pneumatic.");
-            }
+            // We don't have full seasons in movies.
+            //if (remoteMovie.ParsedEpisodeInfo.FullSeason)
+            //{
+            //    throw new NotSupportedException("Full season releases are not supported with Pneumatic.");
+            //}
 
             title = FileNameBuilder.CleanFileName(title);
 
@@ -70,13 +60,7 @@ namespace NzbDrone.Core.Download.Clients.Pneumatic
             return GetDownloadClientId(strmFile);
         }
 
-        public bool IsConfigured
-        {
-            get
-            {
-                return !string.IsNullOrWhiteSpace(Settings.NzbFolder);
-            }
-        }
+        public bool IsConfigured => !string.IsNullOrWhiteSpace(Settings.NzbFolder);
 
         public override IEnumerable<DownloadClientItem> GetItems()
         {
@@ -94,6 +78,9 @@ namespace NzbDrone.Core.Download.Clients.Pneumatic
                     DownloadClient = Definition.Name,
                     DownloadId = GetDownloadClientId(file),
                     Title = title,
+
+                    CanBeRemoved = true,
+                    CanMoveFiles = true,
 
                     TotalSize = _diskProvider.GetFileSize(file),
 
@@ -140,7 +127,7 @@ namespace NzbDrone.Core.Download.Clients.Pneumatic
 
             if (Settings.StrmFolder.IsNullOrWhiteSpace())
             {
-                folder = _configService.DownloadedEpisodesFolder;
+                folder = _configService.DownloadedMoviesFolder;
 
                 if (folder.IsNullOrWhiteSpace())
                 {

@@ -1,4 +1,3 @@
-﻿using System;
 using FluentValidation;
 using NzbDrone.Core.Annotations;
 using NzbDrone.Core.ThingiProvider;
@@ -11,8 +10,8 @@ namespace NzbDrone.Core.Download.Clients.UTorrent
         public UTorrentSettingsValidator()
         {
             RuleFor(c => c.Host).ValidHost();
-            RuleFor(c => c.Port).InclusiveBetween(0, 65535);
-            RuleFor(c => c.TvCategory).NotEmpty();
+            RuleFor(c => c.Port).InclusiveBetween(1, 65535);
+            RuleFor(c => c.MovieCategory).NotEmpty();
         }
     }
 
@@ -23,8 +22,8 @@ namespace NzbDrone.Core.Download.Clients.UTorrent
         public UTorrentSettings()
         {
             Host = "localhost";
-            Port = 9091;
-            TvCategory = "tv-sonarr";
+            Port = 8080;
+            MovieCategory = "radarr";
         }
 
         [FieldDefinition(0, Label = "Host", Type = FieldType.Textbox)]
@@ -39,14 +38,17 @@ namespace NzbDrone.Core.Download.Clients.UTorrent
         [FieldDefinition(3, Label = "Password", Type = FieldType.Password)]
         public string Password { get; set; }
 
-        [FieldDefinition(4, Label = "Category", Type = FieldType.Textbox, HelpText = "Adding a category specific to Sonarr avoids conflicts with unrelated downloads, but it's optional")]
-        public string TvCategory { get; set; }
+        [FieldDefinition(4, Label = "Category", Type = FieldType.Textbox, HelpText = "Adding a category specific to Radarr avoids conflicts with unrelated downloads, but it's optional")]
+        public string MovieCategory { get; set; }
 
-        [FieldDefinition(5, Label = "Recent Priority", Type = FieldType.Select, SelectOptions = typeof(UTorrentPriority), HelpText = "Priority to use when grabbing episodes that aired within the last 14 days")]
-        public int RecentTvPriority { get; set; }
+        [FieldDefinition(5, Label = "Recent Priority", Type = FieldType.Select, SelectOptions = typeof(UTorrentPriority), HelpText = "Priority to use when grabbing movies that released within the last 21 days")]
+        public int RecentMoviePriority { get; set; }
 
-        [FieldDefinition(6, Label = "Older Priority", Type = FieldType.Select, SelectOptions = typeof(UTorrentPriority), HelpText = "Priority to use when grabbing episodes that aired over 14 days ago")]
-        public int OlderTvPriority { get; set; }
+        [FieldDefinition(6, Label = "Older Priority", Type = FieldType.Select, SelectOptions = typeof(UTorrentPriority), HelpText = "Priority to use when grabbing movies that released over 21 days ago")]
+        public int OlderMoviePriority { get; set; }
+
+        [FieldDefinition(7, Label = "Initial State", Type = FieldType.Select, SelectOptions = typeof(UTorrentState), HelpText = "Initial state for torrents added to uTorrent")]
+        public int IntialState { get; set; }
 
         public NzbDroneValidationResult Validate()
         {

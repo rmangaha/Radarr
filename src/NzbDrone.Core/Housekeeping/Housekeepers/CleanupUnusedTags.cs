@@ -1,4 +1,3 @@
-﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using Marr.Data;
@@ -20,7 +19,7 @@ namespace NzbDrone.Core.Housekeeping.Housekeepers
         {
             var mapper = _database.GetDataMapper();
 
-            var usedTags = new[] { "Series", "Notifications", "DelayProfiles", "Restrictions" }
+            var usedTags = new[] { "Movies", "Notifications", "DelayProfiles", "Restrictions" }
                 .SelectMany(v => GetUsedTags(v, mapper))
                 .Distinct()
                 .ToArray();

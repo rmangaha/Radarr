@@ -3,17 +3,16 @@ using System.IO;
 using System.Linq;
 using NLog;
 using NzbDrone.Common.Disk;
-using NzbDrone.Common.EnsureThat;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Configuration;
 using NzbDrone.Core.Download.TrackedDownloads;
 using NzbDrone.Core.History;
 using NzbDrone.Core.MediaFiles;
-using NzbDrone.Core.MediaFiles.EpisodeImport;
+using NzbDrone.Core.MediaFiles.MovieImport;
 using NzbDrone.Core.Messaging.Events;
 using NzbDrone.Core.Parser;
-using NzbDrone.Core.Tv;
+using NzbDrone.Core.Movies;
 
 namespace NzbDrone.Core.Download
 {
@@ -27,26 +26,26 @@ namespace NzbDrone.Core.Download
         private readonly IConfigService _configService;
         private readonly IEventAggregator _eventAggregator;
         private readonly IHistoryService _historyService;
-        private readonly IDownloadedEpisodesImportService _downloadedEpisodesImportService;
+        private readonly IDownloadedMovieImportService _downloadedMovieImportService;
         private readonly IParsingService _parsingService;
+        private readonly IMovieService _movieService;
         private readonly Logger _logger;
-        private readonly ISeriesService _seriesService;
 
         public CompletedDownloadService(IConfigService configService,
                                         IEventAggregator eventAggregator,
                                         IHistoryService historyService,
-                                        IDownloadedEpisodesImportService downloadedEpisodesImportService,
+                                        IDownloadedMovieImportService downloadedMovieImportService,
                                         IParsingService parsingService,
-                                        ISeriesService seriesService,
+                                        IMovieService movieService,
                                         Logger logger)
         {
             _configService = configService;
             _eventAggregator = eventAggregator;
             _historyService = historyService;
-            _downloadedEpisodesImportService = downloadedEpisodesImportService;
+            _downloadedMovieImportService = downloadedMovieImportService;
             _parsingService = parsingService;
+            _movieService = movieService;
             _logger = logger;
-            _seriesService = seriesService;
         }
 
         public void Process(TrackedDownload trackedDownload, bool ignoreWarnings = false)
@@ -62,7 +61,7 @@ namespace NzbDrone.Core.Download
 
                 if (historyItem == null && trackedDownload.DownloadItem.Category.IsNullOrWhiteSpace())
                 {
-                    trackedDownload.Warn("Download wasn't grabbed by Sonarr and not in a category, Skipping.");
+                    trackedDownload.Warn("Download wasn't grabbed by Radarr and not in a category, Skipping.");
                     return;
                 }
 
@@ -81,26 +80,25 @@ namespace NzbDrone.Core.Download
                     return;
                 }
 
-                var downloadedEpisodesFolder = new OsPath(_configService.DownloadedEpisodesFolder);
+                var downloadedMoviesFolder = new OsPath(_configService.DownloadedMoviesFolder);
 
-                if (downloadedEpisodesFolder.Contains(downloadItemOutputPath))
+                if (downloadedMoviesFolder.Contains(downloadItemOutputPath))
                 {
                     trackedDownload.Warn("Intermediate Download path inside drone factory, Skipping.");
                     return;
                 }
 
-                var series = _parsingService.GetSeries(trackedDownload.DownloadItem.Title);
-
-                if (series == null)
+                var movie = _parsingService.GetMovie(trackedDownload.DownloadItem.Title);
+                if (movie == null)
                 {
                     if (historyItem != null)
                     {
-                        series = _seriesService.GetSeries(historyItem.SeriesId);
+                        movie = _movieService.GetMovie(historyItem.MovieId);
                     }
 
-                    if (series == null)
+                    if (movie == null)
                     {
-                        trackedDownload.Warn("Series title mismatch, automatic import is not possible.");
+                        trackedDownload.Warn("Movie title mismatch, automatic import is not possible.");
                         return;
                     }
                 }
@@ -112,7 +110,7 @@ namespace NzbDrone.Core.Download
         private void Import(TrackedDownload trackedDownload)
         {
             var outputPath = trackedDownload.DownloadItem.OutputPath.FullPath;
-            var importResults = _downloadedEpisodesImportService.ProcessPath(outputPath, ImportMode.Auto, trackedDownload.RemoteEpisode.Series, trackedDownload.DownloadItem);
+            var importResults = _downloadedMovieImportService.ProcessPath(outputPath, ImportMode.Auto, trackedDownload.RemoteMovie.Movie, trackedDownload.DownloadItem);
 
             if (importResults.Empty())
             {
@@ -120,7 +118,7 @@ namespace NzbDrone.Core.Download
                 return;
             }
 
-            if (importResults.Count(c => c.Result == ImportResultType.Imported) >= Math.Max(1, trackedDownload.RemoteEpisode.Episodes.Count))
+            if (importResults.Count(c => c.Result == ImportResultType.Imported) >= 1)
             {
                 trackedDownload.State = TrackedDownloadStage.Imported;
                 _eventAggregator.PublishEvent(new DownloadCompletedEvent(trackedDownload));
@@ -131,12 +129,18 @@ namespace NzbDrone.Core.Download
             {
                 var statusMessages = importResults
                     .Where(v => v.Result != ImportResultType.Imported)
-                    .Select(v => new TrackedDownloadStatusMessage(Path.GetFileName(v.ImportDecision.LocalEpisode.Path), v.Errors))
+                    .Select(v =>
+                    {
+                        if (v.ImportDecision.LocalMovie == null)
+	                    {
+                            return new TrackedDownloadStatusMessage("", v.Errors);
+	                    }
+                        return new TrackedDownloadStatusMessage(Path.GetFileName(v.ImportDecision.LocalMovie.Path), v.Errors);
+                    })
                     .ToArray();
 
                 trackedDownload.Warn(statusMessages);
             }
-
         }
     }
 }

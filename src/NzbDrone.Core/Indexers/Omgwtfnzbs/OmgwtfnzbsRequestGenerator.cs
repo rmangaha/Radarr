@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using NzbDrone.Common.Extensions;
@@ -26,73 +26,10 @@ namespace NzbDrone.Core.Indexers.Omgwtfnzbs
             return pageableRequests;
         }
 
-        public virtual IndexerPageableRequestChain GetSearchRequests(SingleEpisodeSearchCriteria searchCriteria)
-        {
-            var pageableRequests = new IndexerPageableRequestChain();
-
-            foreach (var queryTitle in searchCriteria.QueryTitles)
-            {
-                pageableRequests.Add(GetPagedRequests(string.Format("{0}+S{1:00}E{2:00}",
-                    queryTitle,
-                    searchCriteria.SeasonNumber,
-                    searchCriteria.EpisodeNumber)));
-            }
-
-            return pageableRequests;
-        }
-
-        public virtual IndexerPageableRequestChain GetSearchRequests(SeasonSearchCriteria searchCriteria)
-        {
-            var pageableRequests = new IndexerPageableRequestChain();
-
-            foreach (var queryTitle in searchCriteria.QueryTitles)
-            {
-                pageableRequests.Add(GetPagedRequests(string.Format("{0}+S{1:00}",
-                    queryTitle,
-                    searchCriteria.SeasonNumber)));
-            }
-
-            return pageableRequests;
-        }
-
-        public virtual IndexerPageableRequestChain GetSearchRequests(DailyEpisodeSearchCriteria searchCriteria)
-        {
-            var pageableRequests = new IndexerPageableRequestChain();
-
-            foreach (var queryTitle in searchCriteria.QueryTitles)
-            {
-                pageableRequests.Add(GetPagedRequests(string.Format("{0}+{1:yyyy MM dd}",
-                    queryTitle,
-                    searchCriteria.AirDate)));
-            }
-
-            return pageableRequests;
-        }
-
-        public virtual IndexerPageableRequestChain GetSearchRequests(AnimeEpisodeSearchCriteria searchCriteria)
-        {
-            return new IndexerPageableRequestChain();
-        }
-
-        public virtual IndexerPageableRequestChain GetSearchRequests(SpecialEpisodeSearchCriteria searchCriteria)
-        {
-            var pageableRequests = new IndexerPageableRequestChain();
-
-            foreach (var queryTitle in searchCriteria.EpisodeQueryTitles)
-            {
-                var query = queryTitle.Replace('+', ' ');
-                query = System.Web.HttpUtility.UrlEncode(query);
-
-                pageableRequests.Add(GetPagedRequests(query));
-            }
-
-            return pageableRequests;
-        }
-
         private IEnumerable<IndexerRequest> GetPagedRequests(string query)
         {
             var url = new StringBuilder();
-            url.AppendFormat("{0}?catid=19,20&user={1}&api={2}&eng=1&delay={3}", BaseUrl, Settings.Username, Settings.ApiKey, Settings.Delay);
+            url.AppendFormat("{0}?catid=15,16,17,18,31,35&user={1}&api={2}&eng=1&delay={3}", BaseUrl, Settings.Username, Settings.ApiKey, Settings.Delay);
 
             if (query.IsNotNullOrWhiteSpace())
             {
@@ -102,5 +39,18 @@ namespace NzbDrone.Core.Indexers.Omgwtfnzbs
 
             yield return new IndexerRequest(url.ToString(), HttpAccept.Rss);
         }
+
+        public IndexerPageableRequestChain GetSearchRequests(MovieSearchCriteria searchCriteria)
+        {
+            var pageableRequests = new IndexerPageableRequestChain();
+
+            pageableRequests.Add(GetPagedRequests(string.Format("{0}",
+                    searchCriteria.Movie.Title)));
+         
+            return pageableRequests;
+        }
+        
+        public Func<IDictionary<string, string>> GetCookies { get; set; }
+        public Action<IDictionary<string, string>, DateTime?> CookiesUpdater { get; set; }
     }
 }

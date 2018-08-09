@@ -13,15 +13,15 @@ namespace NzbDrone.Core.DecisionEngine.Specifications
             _logger = logger;
         }
 
-        public RejectionType Type { get { return RejectionType.Permanent; } }
+        public RejectionType Type => RejectionType.Permanent;
 
-        public virtual Decision IsSatisfiedBy(RemoteEpisode subject, SearchCriteriaBase searchCriteria)
+        public virtual Decision IsSatisfiedBy(RemoteMovie subject, SearchCriteriaBase searchCriteria)
         {
-            _logger.Debug("Checking if report meets quality requirements. {0}", subject.ParsedEpisodeInfo.Quality);
-            if (!subject.Series.Profile.Value.Items.Exists(v => v.Allowed && v.Quality == subject.ParsedEpisodeInfo.Quality.Quality))
+            _logger.Debug("Checking if report meets quality requirements. {0}", subject.ParsedMovieInfo.Quality);
+            if (!subject.Movie.Profile.Value.Items.Exists(v => v.Allowed && v.Quality == subject.ParsedMovieInfo.Quality.Quality))
             {
-                _logger.Debug("Quality {0} rejected by Series' quality profile", subject.ParsedEpisodeInfo.Quality);
-                return Decision.Reject("{0} is not wanted in profile", subject.ParsedEpisodeInfo.Quality.Quality);
+                _logger.Debug("Quality {0} rejected by Movie's quality profile", subject.ParsedMovieInfo.Quality);
+                return Decision.Reject("{0} is not wanted in profile", subject.ParsedMovieInfo.Quality.Quality);
             }
 
             return Decision.Accept();

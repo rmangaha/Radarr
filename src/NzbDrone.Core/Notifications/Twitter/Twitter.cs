@@ -2,7 +2,7 @@
 using FluentValidation.Results;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Exceptions;
-using NzbDrone.Core.Tv;
+using NzbDrone.Core.Movies;
 using NzbDrone.Core.Validation;
 
 namespace NzbDrone.Core.Notifications.Twitter
@@ -17,22 +17,19 @@ namespace NzbDrone.Core.Notifications.Twitter
             _twitterService = twitterService;
         }
 
-        public override string Link
-        {
-            get { return "https://twitter.com/"; }
-        }
+        public override string Link => "https://twitter.com/";
 
         public override void OnGrab(GrabMessage message)
         {
-            _twitterService.SendNotification($"Grabbed: {message.Message}", Settings);
+            _twitterService.SendNotification($"[Radarr] Grabbed: {message.Message}", Settings);
         }
 
         public override void OnDownload(DownloadMessage message)
         {
-            _twitterService.SendNotification($"Imported: {message.Message}", Settings);
+            _twitterService.SendNotification($"[Radarr] Imported: {message.Message}", Settings);
         }
 
-        public override void OnRename(Series series)
+        public override void OnMovieRename(Movie movie)
         {
         }
 
@@ -77,21 +74,9 @@ namespace NzbDrone.Core.Notifications.Twitter
             return new { };
         }
 
-        public override string Name
-        {
-            get
-            {
-                return "Twitter";
-            }
-        }
+        public override string Name => "Twitter";
 
-        public override bool SupportsOnRename
-        {
-            get
-            {
-                return false;
-            }
-        }
+        public override bool SupportsOnRename => false;
 
         public override ValidationResult Test()
         {

@@ -30,24 +30,24 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.NzbgetTests
                                               Port = 2222,
                                               Username = "admin",
                                               Password = "pass",
-                                              TvCategory = "tv",
-                                              RecentTvPriority = (int)NzbgetPriority.High
+                                              MovieCategory = "movie",
+                                              RecentMoviePriority = (int)NzbgetPriority.High
                                           };
 
             _queued = new NzbgetQueueItem
                 {
                     FileSizeLo = 1000,
                     RemainingSizeLo = 10,
-                    Category = "tv",
-                    NzbName = "Droned.S01E01.Pilot.1080p.WEB-DL-DRONE",
+                    Category = "movie",
+                    NzbName = "Droned.1998.1080p.WEB-DL-DRONE",
                     Parameters = new List<NzbgetParameter> { new NzbgetParameter { Name = "drone", Value = "id" } }
                 };
 
             _failed = new NzbgetHistoryItem
                 {
                     FileSizeLo = 1000,
-                    Category = "tv",
-                    Name = "Droned.S01E01.Pilot.1080p.WEB-DL-DRONE",
+                    Category = "movie",
+                    Name = "Droned.1998.1080p.WEB-DL-DRONE",
                     DestDir = "somedirectory",
                     Parameters = new List<NzbgetParameter> { new NzbgetParameter { Name = "drone", Value = "id" } },
                     ParStatus = "Some Error",
@@ -61,9 +61,9 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.NzbgetTests
             _completed = new NzbgetHistoryItem
                 {
                     FileSizeLo = 1000,
-                    Category = "tv",
-                    Name = "Droned.S01E01.Pilot.1080p.WEB-DL-DRONE",
-                    DestDir = "/remote/mount/tv/Droned.S01E01.Pilot.1080p.WEB-DL-DRONE",
+                    Category = "movie",
+                    Name = "Droned.1998.1080p.WEB-DL-DRONE",
+                    DestDir = "/remote/mount/tv/Droned.1998.1080p.WEB-DL-DRONE",
                     Parameters = new List<NzbgetParameter> { new NzbgetParameter { Name = "drone", Value = "id" } },
                     ParStatus = "SUCCESS",
                     UnpackStatus = "NONE",
@@ -81,8 +81,8 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.NzbgetTests
                 });
 
             var configItems = new Dictionary<string, string>();
-            configItems.Add("Category1.Name", "tv");
-            configItems.Add("Category1.DestDir", @"/remote/mount/tv");
+            configItems.Add("Category1.Name", "movie");
+            configItems.Add("Category1.DestDir", @"/remote/mount/movie");
 
             Mocker.GetMock<INzbgetProxy>()
                 .Setup(v => v.GetConfig(It.IsAny<NzbgetSettings>()))
@@ -92,14 +92,14 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.NzbgetTests
         protected void GivenFailedDownload()
         {
             Mocker.GetMock<INzbgetProxy>()
-                .Setup(s => s.DownloadNzb(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<NzbgetSettings>()))
+                .Setup(s => s.DownloadNzb(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<NzbgetSettings>()))
                 .Returns((string)null);
         }
 
         protected void GivenSuccessfulDownload()
         {
             Mocker.GetMock<INzbgetProxy>()
-                .Setup(s => s.DownloadNzb(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<NzbgetSettings>()))
+                .Setup(s => s.DownloadNzb(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<int>(), It.IsAny<bool>(), It.IsAny<NzbgetSettings>()))
                 .Returns(Guid.NewGuid().ToString().Replace("-", ""));
         }
 
@@ -303,9 +303,9 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.NzbgetTests
         {
             GivenSuccessfulDownload();
 
-            var remoteEpisode = CreateRemoteEpisode();
+            var remoteMovie = CreateRemoteMovie();
 
-            var id = Subject.Download(remoteEpisode);
+            var id = Subject.Download(remoteMovie);
 
             id.Should().NotBeNullOrEmpty();
         }
@@ -315,9 +315,9 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.NzbgetTests
         {
             GivenFailedDownload();
 
-            var remoteEpisode = CreateRemoteEpisode();
+            var remoteMovie = CreateRemoteMovie();
 
-            Assert.Throws<DownloadClientException>(() => Subject.Download(remoteEpisode));
+            Assert.Throws<DownloadClientException>(() => Subject.Download(remoteMovie));
         }
 
         [Test]
@@ -340,7 +340,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.NzbgetTests
 
             result.IsLocalhost.Should().BeTrue();
             result.OutputRootFolders.Should().NotBeNull();
-            result.OutputRootFolders.First().Should().Be(@"/remote/mount/tv");
+            result.OutputRootFolders.First().Should().Be(@"/remote/mount/movie");
         }
 
         [Test]
@@ -362,14 +362,14 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.NzbgetTests
         {
             Mocker.GetMock<IRemotePathMappingService>()
                 .Setup(v => v.RemapRemoteToLocal("127.0.0.1", It.IsAny<OsPath>()))
-                .Returns(new OsPath(@"O:\mymount\Droned.S01E01.Pilot.1080p.WEB-DL-DRONE".AsOsAgnostic()));
+                .Returns(new OsPath(@"O:\mymount\Droned.1998.1080p.WEB-DL-DRONE".AsOsAgnostic()));
 
             GivenQueue(null);
             GivenHistory(_completed);
 
             var result = Subject.GetItems().Single();
 
-            result.OutputPath.Should().Be(@"O:\mymount\Droned.S01E01.Pilot.1080p.WEB-DL-DRONE".AsOsAgnostic());
+            result.OutputPath.Should().Be(@"O:\mymount\Droned.1998.1080p.WEB-DL-DRONE".AsOsAgnostic());
         }
 
         [TestCase("11.0", false)]

@@ -1,10 +1,9 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using System.Text.RegularExpressions;
 using NLog;
 using NzbDrone.Core.Configuration;
 
-namespace NzbDrone.Host.AccessControl
+namespace Radarr.Host.AccessControl
 {
     public interface ISslAdapter
     {

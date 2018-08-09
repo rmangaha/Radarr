@@ -1,11 +1,11 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Extras.Files;
 using NzbDrone.Core.Parser;
-using NzbDrone.Core.Tv;
+using NzbDrone.Core.Movies;
 
 namespace NzbDrone.Core.Extras.Subtitles
 {
@@ -25,20 +25,14 @@ namespace NzbDrone.Core.Extras.Subtitles
             _logger = logger;
         }
 
-        public override int Order
-        {
-            get
-            {
-                return 1;
-            }
-        }
+        public override int Order => 1;
 
-        public override IEnumerable<ExtraFile> ProcessFiles(Series series, List<string> filesOnDisk, List<string> importedFiles)
+        public override IEnumerable<ExtraFile> ProcessFiles(Movie movie, List<string> filesOnDisk, List<string> importedFiles)
         {
-            _logger.Debug("Looking for existing subtitle files in {0}", series.Path);
+            _logger.Debug("Looking for existing subtitle files in {0}", movie.Path);
 
             var subtitleFiles = new List<SubtitleFile>();
-            var filterResult = FilterAndClean(series, filesOnDisk, importedFiles);
+            var filterResult = FilterAndClean(movie, filesOnDisk, importedFiles);
 
             foreach (var possibleSubtitleFile in filterResult.FilesOnDisk)
             {
@@ -46,32 +40,19 @@ namespace NzbDrone.Core.Extras.Subtitles
 
                 if (SubtitleFileExtensions.Extensions.Contains(extension))
                 {
-                    var localEpisode = _parsingService.GetLocalEpisode(possibleSubtitleFile, series);
+                    var minimalInfo = _parsingService.ParseMinimalPathMovieInfo(possibleSubtitleFile);
 
-                    if (localEpisode == null)
+                    if (minimalInfo == null)
                     {
                         _logger.Debug("Unable to parse subtitle file: {0}", possibleSubtitleFile);
                         continue;
                     }
 
-                    if (localEpisode.Episodes.Empty())
-                    {
-                        _logger.Debug("Cannot find related episodes for: {0}", possibleSubtitleFile);
-                        continue;
-                    }
-
-                    if (localEpisode.Episodes.DistinctBy(e => e.EpisodeFileId).Count() > 1)
-                    {
-                        _logger.Debug("Subtitle file: {0} does not match existing files.", possibleSubtitleFile);
-                        continue;
-                    }
-
                     var subtitleFile = new SubtitleFile
                                        {
-                                           SeriesId = series.Id,
-                                           SeasonNumber = localEpisode.SeasonNumber,
-                                           EpisodeFileId = localEpisode.Episodes.First().EpisodeFileId,
-                                           RelativePath = series.Path.GetRelativePath(possibleSubtitleFile),
+                                           MovieId = movie.Id,
+                                           MovieFileId = movie.MovieFileId,
+                                           RelativePath = movie.Path.GetRelativePath(possibleSubtitleFile),
                                            Language = LanguageParser.ParseSubtitleLanguage(possibleSubtitleFile),
                                            Extension = extension
                                        };

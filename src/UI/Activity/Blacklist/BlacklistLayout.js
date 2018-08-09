@@ -2,7 +2,7 @@ var vent = require('vent');
 var Marionette = require('marionette');
 var Backgrid = require('backgrid');
 var BlacklistCollection = require('./BlacklistCollection');
-var SeriesTitleCell = require('../../Cells/SeriesTitleCell');
+var MovieTitleCell = require('../../Cells/MovieTitleCell');
 var QualityCell = require('../../Cells/QualityCell');
 var RelativeDateCell = require('../../Cells/RelativeDateCell');
 var BlacklistActionsCell = require('./BlacklistActionsCell');
@@ -21,9 +21,9 @@ module.exports = Marionette.Layout.extend({
 
     columns : [
         {
-            name  : 'series',
-            label : 'Series',
-            cell  : SeriesTitleCell
+            name  : 'movie',
+            label : 'Movie Title',
+            cell  : MovieTitleCell
         },
         {
             name  : 'sourceTitle',
@@ -80,10 +80,11 @@ module.exports = Marionette.Layout.extend({
         var leftSideButtons = {
             type       : 'default',
             storeState : false,
+            collapse: true,
             items      : [
                 {
                     title   : 'Clear Blacklist',
-                    icon    : 'icon-sonarr-clear',
+                    icon    : 'icon-radarr-clear',
                     command : 'clearBlacklist'
                 }
             ]

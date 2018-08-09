@@ -1,7 +1,6 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Text;
 using FluentValidation.Results;
 using NLog;
@@ -9,7 +8,6 @@ using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Configuration;
-using NzbDrone.Core.MediaFiles;
 using NzbDrone.Core.MediaFiles.TorrentInfo;
 using NzbDrone.Core.Organizer;
 using NzbDrone.Core.Parser.Model;
@@ -24,36 +22,31 @@ namespace NzbDrone.Core.Download.Clients.Blackhole
 
         public TimeSpan ScanGracePeriod { get; set; }
 
-        public override bool PreferTorrentFile
-        {
-            get
-            {
-                return true;
-            }
-        }
+        public override bool PreferTorrentFile => true;
 
         public TorrentBlackhole(IScanWatchFolder scanWatchFolder,
                                 ITorrentFileInfoReader torrentFileInfoReader,
                                 IHttpClient httpClient,
                                 IConfigService configService,
+                                INamingConfigService namingConfigService,
                                 IDiskProvider diskProvider,
                                 IRemotePathMappingService remotePathMappingService,
                                 Logger logger)
-            : base(torrentFileInfoReader, httpClient, configService, diskProvider, remotePathMappingService, logger)
+            : base(torrentFileInfoReader, httpClient, configService, namingConfigService, diskProvider, remotePathMappingService, logger)
         {
             _scanWatchFolder = scanWatchFolder;
 
             ScanGracePeriod = TimeSpan.FromSeconds(30);
         }
 
-        protected override string AddFromMagnetLink(RemoteEpisode remoteEpisode, string hash, string magnetLink)
+        protected override string AddFromMagnetLink(RemoteMovie remoteMovie, string hash, string magnetLink)
         {
             if (!Settings.SaveMagnetFiles)
             {
                 throw new NotSupportedException("Blackhole does not support magnet links.");
             }
 
-            var title = remoteEpisode.Release.Title;
+            var title = remoteMovie.Release.Title;
 
             title = FileNameBuilder.CleanFileName(title);
 
@@ -70,9 +63,9 @@ namespace NzbDrone.Core.Download.Clients.Blackhole
             return null;
         }
 
-        protected override string AddFromTorrentFile(RemoteEpisode remoteEpisode, string hash, string filename, byte[] fileContent)
+        protected override string AddFromTorrentFile(RemoteMovie remoteMovie, string hash, string filename, byte[] fileContent)
         {
-            var title = remoteEpisode.Release.Title;
+            var title = remoteMovie.Release.Title;
 
             title = FileNameBuilder.CleanFileName(title);
 
@@ -88,22 +81,9 @@ namespace NzbDrone.Core.Download.Clients.Blackhole
             return null;
         }
 
-        public override string Name
-        {
-            get
-            {
-                return "Torrent Blackhole";
-            }
-        }
+        public override string Name => "Torrent Blackhole";
 
-        public override ProviderMessage Message
-        {
-            get
-            {
-                return new ProviderMessage("Magnet links are not supported.", ProviderMessageType.Warning);
-            }
-        }
-
+        public override ProviderMessage Message => new ProviderMessage("Magnet links are not supported.", ProviderMessageType.Warning);
 
 
         public override IEnumerable<DownloadClientItem> GetItems()
@@ -114,7 +94,7 @@ namespace NzbDrone.Core.Download.Clients.Blackhole
                 {
                     DownloadClient = Definition.Name,
                     DownloadId = Definition.Name + "_" + item.DownloadId,
-                    Category = "sonarr",
+                    Category = "radarr",
                     Title = item.Title,
 
                     TotalSize = item.TotalSize,
@@ -124,7 +104,8 @@ namespace NzbDrone.Core.Download.Clients.Blackhole
 
                     Status = item.Status,
 
-                    IsReadOnly = Settings.ReadOnly
+                    CanMoveFiles = !Settings.ReadOnly,
+                    CanBeRemoved = !Settings.ReadOnly
                 };
             }
         }

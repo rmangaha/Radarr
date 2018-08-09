@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Web.Hosting;
 using Marr.Data;
 using Marr.Data.QGen;
+using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Datastore.Events;
 using NzbDrone.Core.Datastore.Extensions;
@@ -40,10 +42,7 @@ namespace NzbDrone.Core.Datastore
         private readonly IDatabase _database;
         private readonly IEventAggregator _eventAggregator;
 
-        protected IDataMapper DataMapper
-        {
-            get { return _database.GetDataMapper(); }
-        }
+        protected IDataMapper DataMapper => _database.GetDataMapper();
 
         public BasicRepository(IDatabase database, IEventAggregator eventAggregator)
         {
@@ -51,10 +50,7 @@ namespace NzbDrone.Core.Datastore
             _eventAggregator = eventAggregator;
         }
 
-        protected QueryBuilder<TModel> Query
-        {
-            get { return DataMapper.Query<TModel>(); }
-        }
+        protected QueryBuilder<TModel> Query => AddJoinQueries(DataMapper.Query<TModel>());
 
         protected void Delete(Expression<Func<TModel, bool>> filter)
         {
@@ -63,7 +59,7 @@ namespace NzbDrone.Core.Datastore
 
         public IEnumerable<TModel> All()
         {
-            return DataMapper.Query<TModel>().ToList();
+            return Query.ToList();
         }
 
         public int Count()
@@ -87,11 +83,12 @@ namespace NzbDrone.Core.Datastore
         {
             var idList = ids.ToList();
             var query = string.Format("Id IN ({0})", string.Join(",", idList));
-            var result = Query.Where(query).ToList();
+            var result = Query.Where(m => m.Id.In(idList)).ToList();
+            //var result = Query.Where(query).ToList();
 
             if (result.Count != idList.Count())
             {
-                throw new ApplicationException("Expected query to return {0} rows but returned {1}".Inject(idList.Count(), result.Count));
+                throw new ApplicationException("Expected query to return {0} rows but returned {1}.".Inject(idList.Count(), result.Count));
             }
 
             return result;
@@ -252,7 +249,8 @@ namespace NzbDrone.Core.Datastore
 
         public virtual PagingSpec<TModel> GetPaged(PagingSpec<TModel> pagingSpec)
         {
-            pagingSpec.Records = GetPagedQuery(Query, pagingSpec).ToList();
+            pagingSpec.Records = GetPagedQuery(Query, pagingSpec).Skip(pagingSpec.PagingOffset())
+                .Take(pagingSpec.PageSize).ToList();
             pagingSpec.TotalRecords = GetPagedQuery(Query, pagingSpec).GetRowCount();
 
             return pagingSpec;
@@ -261,9 +259,7 @@ namespace NzbDrone.Core.Datastore
         protected virtual SortBuilder<TModel> GetPagedQuery(QueryBuilder<TModel> query, PagingSpec<TModel> pagingSpec)
         {
             return query.Where(pagingSpec.FilterExpression)
-                        .OrderBy(pagingSpec.OrderByClause(), pagingSpec.ToSortDirection())
-                        .Skip(pagingSpec.PagingOffset())
-                        .Take(pagingSpec.PageSize);
+                .OrderBy(pagingSpec.OrderByClause(x => x.Id), pagingSpec.ToSortDirection());
         }
 
         protected void ModelCreated(TModel model)
@@ -289,9 +285,11 @@ namespace NzbDrone.Core.Datastore
             }
         }
 
-        protected virtual bool PublishModelEvents
+        protected virtual QueryBuilder<TModel> AddJoinQueries(QueryBuilder<TModel> baseQuery)
         {
-            get { return false; }
+            return baseQuery;
         }
+
+        protected virtual bool PublishModelEvents => false;
     }
 }

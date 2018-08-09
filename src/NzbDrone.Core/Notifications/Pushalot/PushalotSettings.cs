@@ -1,5 +1,4 @@
-﻿using System;
-using FluentValidation;
+﻿using FluentValidation;
 using NzbDrone.Core.Annotations;
 using NzbDrone.Core.ThingiProvider;
 using NzbDrone.Core.Validation;
@@ -29,16 +28,10 @@ namespace NzbDrone.Core.Notifications.Pushalot
         [FieldDefinition(1, Label = "Priority", Type = FieldType.Select, SelectOptions = typeof(PushalotPriority))]
         public int Priority { get; set; }
 
-        [FieldDefinition(2, Label = "Image", Type = FieldType.Checkbox, HelpText = "Include Sonarr logo with notifications")]
+        [FieldDefinition(2, Label = "Image", Type = FieldType.Checkbox, HelpText = "Include Radarr logo with notifications")]
         public bool Image { get; set; }
 
-        public bool IsValid
-        {
-            get
-            {
-                return !string.IsNullOrWhiteSpace(AuthToken);
-            }
-        }
+        public bool IsValid => !string.IsNullOrWhiteSpace(AuthToken);
 
         public NzbDroneValidationResult Validate()
         {

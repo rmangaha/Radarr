@@ -1,4 +1,3 @@
-﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using NzbDrone.Api.REST;
@@ -10,6 +9,7 @@ namespace NzbDrone.Api.RootFolders
     {
         public string Path { get; set; }
         public long? FreeSpace { get; set; }
+        public long? TotalSpace { get; set; }
 
         public List<UnmappedFolder> UnmappedFolders { get; set; }
     }
@@ -26,6 +26,7 @@ namespace NzbDrone.Api.RootFolders
 
                 Path = model.Path,
                 FreeSpace = model.FreeSpace,
+                TotalSpace = model.TotalSpace,
                 UnmappedFolders = model.UnmappedFolders
             };
         }
@@ -39,8 +40,8 @@ namespace NzbDrone.Api.RootFolders
                 Id = resource.Id,
 
                 Path = resource.Path,
-                //FreeSpace
-                //UnmappedFolders
+                FreeSpace = resource.FreeSpace,
+                UnmappedFolders = resource.UnmappedFolders
             };
         }
 

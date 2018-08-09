@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Reflection;
 using System.Threading;
 using NLog;
@@ -7,10 +7,9 @@ using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Instrumentation;
 using NzbDrone.Common.Processes;
 using NzbDrone.Common.Security;
-using NzbDrone.Core.Datastore;
 using NzbDrone.Core.Instrumentation;
 
-namespace NzbDrone.Host
+namespace Radarr.Host
 {
     public static class Bootstrap
     {
@@ -24,7 +23,7 @@ namespace NzbDrone.Host
                 SecurityProtocolPolicy.Register();
                 X509CertificateValidationPolicy.Register();
 
-                Logger.Info("Starting Sonarr - {0} - Version {1}", Assembly.GetCallingAssembly().Location, Assembly.GetExecutingAssembly().GetName().Version);
+                Logger.Info("Starting Radarr - {0} - Version {1}", Assembly.GetCallingAssembly().Location, Assembly.GetExecutingAssembly().GetName().Version);
 
                 if (!PlatformValidation.IsValidate(userAlert))
                 {
@@ -38,12 +37,13 @@ namespace NzbDrone.Host
                 var appMode = GetApplicationMode(startupContext);
 
                 Start(appMode, startupContext);
+                
+                _container.Resolve<ICancelHandler>().Attach();
 
                 if (startCallback != null)
                 {
                     startCallback(_container);
                 }
-
                 else
                 {
                     SpinToExit(appMode);
@@ -69,8 +69,7 @@ namespace NzbDrone.Host
 
                 EnsureSingleInstance(applicationModes == ApplicationModes.Service, startupContext);
             }
-
-            DbFactory.RegisterDatabase(_container);
+            
             _container.Resolve<Router>().Route(applicationModes);
         }
 
@@ -88,11 +87,15 @@ namespace NzbDrone.Host
         {
             var instancePolicy = _container.Resolve<ISingleInstancePolicy>();
 
-            if (isService)
+            if (startupContext.Flags.Contains(StartupContext.TERMINATE))
             {
                 instancePolicy.KillAllOtherInstance();
             }
-            else if (startupContext.Flags.Contains(StartupContext.TERMINATE))
+            else if (startupContext.Args.ContainsKey(StartupContext.APPDATA))
+            {
+                instancePolicy.WarnIfAlreadyRunning();
+            }
+            else if (isService)
             {
                 instancePolicy.KillAllOtherInstance();
             }

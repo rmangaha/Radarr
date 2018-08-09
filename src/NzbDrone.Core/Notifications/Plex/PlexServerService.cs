@@ -7,13 +7,13 @@ using NLog;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Notifications.Plex.Models;
-using NzbDrone.Core.Tv;
+using NzbDrone.Core.Movies;
 
 namespace NzbDrone.Core.Notifications.Plex
 {
     public interface IPlexServerService
     {
-        void UpdateLibrary(Series series, PlexServerSettings settings);
+        void UpdateMovieSections(Movie movie, PlexServerSettings settings);
         ValidationFailure Test(PlexServerSettings settings);
     }
 
@@ -32,7 +32,7 @@ namespace NzbDrone.Core.Notifications.Plex
             _logger = logger;
         }
 
-        public void UpdateLibrary(Series series, PlexServerSettings settings)
+        public void UpdateMovieSections(Movie movie, PlexServerSettings settings)
         {
             try
             {
@@ -46,7 +46,7 @@ namespace NzbDrone.Core.Notifications.Plex
 
                 if (partialUpdates)
                 {
-                    UpdatePartialSection(series, sections, settings);
+                    UpdatePartialSection(movie, sections, settings);
                 }
 
                 else
@@ -55,7 +55,7 @@ namespace NzbDrone.Core.Notifications.Plex
                 }
             }
 
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 _logger.Warn(ex, "Failed to Update Plex host: " + settings.Host);
                 throw;
@@ -66,7 +66,7 @@ namespace NzbDrone.Core.Notifications.Plex
         {
             _logger.Debug("Getting sections from Plex host: {0}", settings.Host);
 
-            return _plexServerProxy.GetTvSections(settings).ToList();
+            return _plexServerProxy.GetMovieSections(settings).ToList();
         }
 
         private bool PartialUpdatesAllowed(PlexServerSettings settings, Version version)
@@ -98,7 +98,7 @@ namespace NzbDrone.Core.Notifications.Plex
         {
             if (version >= new Version(1, 3, 0) && version < new Version(1, 3, 1))
             {
-                throw new PlexVersionException("Found version {0}, upgrade to PMS 1.3.1 to fix library updating and then restart Sonarr", version);
+                throw new PlexVersionException("Found version {0}, upgrade to PMS 1.3.1 to fix library updating and then restart Radarr", version);
             }
         }
 
@@ -130,18 +130,18 @@ namespace NzbDrone.Core.Notifications.Plex
             _plexServerProxy.Update(sectionId, settings);
         }
 
-        private void UpdatePartialSection(Series series, List<PlexSection> sections, PlexServerSettings settings)
+        private void UpdatePartialSection(Movie movie, List<PlexSection> sections, PlexServerSettings settings)
         {
             var partiallyUpdated = false;
 
             foreach (var section in sections)
             {
-                var metadataId = GetMetadataId(section.Id, series, section.Language, settings);
+                var metadataId = GetMetadataId(section.Id, movie, section.Language, settings);
 
                 if (metadataId.HasValue)
                 {
-                    _logger.Debug("Updating Plex host: {0}, Section: {1}, Series: {2}", settings.Host, section.Id, series);
-                    _plexServerProxy.UpdateSeries(metadataId.Value, settings);
+                    _logger.Debug("Updating Plex host: {0}, Section: {1}, Movie: {2}", settings.Host, section.Id, movie);
+                    _plexServerProxy.UpdateItem(metadataId.Value, settings);
 
                     partiallyUpdated = true;
                 }
@@ -155,11 +155,11 @@ namespace NzbDrone.Core.Notifications.Plex
             }
         }
 
-        private int? GetMetadataId(int sectionId, Series series, string language, PlexServerSettings settings)
+        private int? GetMetadataId(int sectionId, Movie movie, string language, PlexServerSettings settings)
         {
-            _logger.Debug("Getting metadata from Plex host: {0} for series: {1}", settings.Host, series);
+            _logger.Debug("Getting metadata from Plex host: {0} for movie: {1}", settings.Host, movie);
 
-            return _plexServerProxy.GetMetadataId(sectionId, series.TvdbId, language, settings);
+            return _plexServerProxy.GetMetadataId(sectionId, movie.ImdbId, language, settings);
         }
 
         public ValidationFailure Test(PlexServerSettings settings)
@@ -170,7 +170,7 @@ namespace NzbDrone.Core.Notifications.Plex
 
                 if (sections.Empty())
                 {
-                    return new ValidationFailure("Host", "At least one TV library is required");
+                    return new ValidationFailure("Host", "At least one movie library is required");
                 }
             }
             catch(PlexAuthenticationException ex)

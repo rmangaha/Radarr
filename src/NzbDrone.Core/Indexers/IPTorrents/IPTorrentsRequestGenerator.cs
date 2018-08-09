@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using NzbDrone.Common.Extensions;
+using System;
+using System.Collections.Generic;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.IndexerSearch.Definitions;
 
@@ -17,35 +17,18 @@ namespace NzbDrone.Core.Indexers.IPTorrents
 
             return pageableRequests;
         }
-
-        public virtual IndexerPageableRequestChain GetSearchRequests(SingleEpisodeSearchCriteria searchCriteria)
-        {
-            return new IndexerPageableRequestChain();
-        }
-
-        public virtual IndexerPageableRequestChain GetSearchRequests(SeasonSearchCriteria searchCriteria)
-        {
-            return new IndexerPageableRequestChain();
-        }
-
-        public virtual IndexerPageableRequestChain GetSearchRequests(DailyEpisodeSearchCriteria searchCriteria)
-        {
-            return new IndexerPageableRequestChain();
-        }
-
-        public virtual IndexerPageableRequestChain GetSearchRequests(AnimeEpisodeSearchCriteria searchCriteria)
-        {
-            return new IndexerPageableRequestChain();
-        }
-
-        public virtual IndexerPageableRequestChain GetSearchRequests(SpecialEpisodeSearchCriteria searchCriteria)
+        
+        public IndexerPageableRequestChain GetSearchRequests(MovieSearchCriteria searchCriteria)
         {
             return new IndexerPageableRequestChain();
         }
 
         private IEnumerable<IndexerRequest> GetRssRequests()
         {
-            yield return new IndexerRequest(Settings.Url, HttpAccept.Rss);
+            yield return new IndexerRequest(Settings.BaseUrl, HttpAccept.Rss);
         }
+        
+        public Func<IDictionary<string, string>> GetCookies { get; set; }
+        public Action<IDictionary<string, string>, DateTime?> CookiesUpdater { get; set; }
     }
 }

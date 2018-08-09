@@ -1,8 +1,5 @@
 ﻿using System.Collections.Generic;
 using NzbDrone.Core.DecisionEngine;
-using NzbDrone.Core.Indexers;
-using NzbDrone.Core.Parser.Model;
-using System.Linq;
 
 namespace NzbDrone.Api.Indexers
 {
@@ -28,9 +25,9 @@ namespace NzbDrone.Api.Indexers
 
             release.ReleaseWeight = initialWeight;
 
-            if (decision.RemoteEpisode.Series != null)
+            if (decision.RemoteMovie.Movie != null)
             {
-                release.QualityWeight = decision.RemoteEpisode.Series
+                release.QualityWeight = decision.RemoteMovie.Movie
                                                               .Profile.Value
                                                               .Items.FindIndex(v => v.Quality == release.Quality.Quality) * 100;
             }

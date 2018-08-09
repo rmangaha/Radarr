@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using FluentValidation.Results;
 using NzbDrone.Common.Extensions;
-using NzbDrone.Core.Tv;
+using NzbDrone.Core.Movies;
 using Prowlin;
 
 namespace NzbDrone.Core.Notifications.Prowl
@@ -15,44 +15,29 @@ namespace NzbDrone.Core.Notifications.Prowl
             _prowlService = prowlService;
         }
 
-        public override string Link
-        {
-            get { return "http://www.prowlapp.com/"; }
-        }
+        public override string Link => "http://www.prowlapp.com/";
 
         public override void OnGrab(GrabMessage grabMessage)
         {
-            const string title = "Episode Grabbed";
+            const string title = "Movie Grabbed";
 
             _prowlService.SendNotification(title, grabMessage.Message, Settings.ApiKey, (NotificationPriority)Settings.Priority);
         }
 
         public override void OnDownload(DownloadMessage message)
         {
-            const string title = "Episode Downloaded";
+            const string title = "Movie Downloaded";
 
             _prowlService.SendNotification(title, message.Message, Settings.ApiKey, (NotificationPriority)Settings.Priority);
         }
 
-        public override void OnRename(Series series)
+        public override void OnMovieRename(Movie movie)
         {
         }
+		
+        public override string Name => "Prowl";
 
-        public override string Name
-        {
-            get
-            {
-                return "Prowl";
-            }
-        }
-
-        public override bool SupportsOnRename
-        {
-            get
-            {
-                return false;
-            }
-        }
+        public override bool SupportsOnRename => false;
 
         public override ValidationResult Test()
         {

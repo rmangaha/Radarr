@@ -1,12 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using FluentAssertions;
 using NUnit.Framework;
-using NzbDrone.Core.MediaCover;
 using NzbDrone.Core.MetadataSource.SkyHook;
 using NzbDrone.Core.Test.Framework;
-using NzbDrone.Core.Tv;
 using NzbDrone.Test.Common;
 using NzbDrone.Test.Common.Categories;
 
@@ -22,20 +17,13 @@ namespace NzbDrone.Core.Test.MetadataSource.SkyHook
             UseRealHttp();
         }
 
-        [TestCase("The Simpsons", "The Simpsons")]
-        [TestCase("South Park", "South Park")]
-        [TestCase("Franklin & Bash", "Franklin & Bash")]
-        [TestCase("House", "House")]
-        [TestCase("Mr. D", "Mr. D")]
-        [TestCase("Rob & Big", "Rob & Big")]
-        [TestCase("M*A*S*H", "M*A*S*H")]
-        //[TestCase("imdb:tt0436992", "Doctor Who (2005)")]
-        [TestCase("tvdb:78804", "Doctor Who (2005)")]
-        [TestCase("tvdbid:78804", "Doctor Who (2005)")]
-        [TestCase("tvdbid: 78804 ", "Doctor Who (2005)")]
+        [TestCase("Prometheus", "Prometheus")]
+        [TestCase("The Man from U.N.C.L.E.", "The Man from U.N.C.L.E.")]
+        [TestCase("imdb:tt2527336", "Star Wars: The Last Jedi")]
+        [TestCase("imdb:tt2798920", "Annihilation")]
         public void successful_search(string title, string expected)
         {
-            var result = Subject.SearchForNewSeries(title);
+            var result = Subject.SearchForNewMovie(title);
 
             result.Should().NotBeEmpty();
 
@@ -44,17 +32,17 @@ namespace NzbDrone.Core.Test.MetadataSource.SkyHook
             ExceptionVerification.IgnoreWarns();
         }
 
-        [TestCase("tvdbid:")]
-        [TestCase("tvdbid: 99999999999999999999")]
-        [TestCase("tvdbid: 0")]
-        [TestCase("tvdbid: -12")]
-        [TestCase("tvdbid:289578")]
+        [TestCase("tmdbid:")]
+        [TestCase("tmdbid: 99999999999999999999")]
+        [TestCase("tmdbid: 0")]
+        [TestCase("tmdbid: -12")]
+        [TestCase("tmdbid:1")]
         [TestCase("adjalkwdjkalwdjklawjdlKAJD;EF")]
         public void no_search_result(string term)
         {
-            var result = Subject.SearchForNewSeries(term);
+            var result = Subject.SearchForNewMovie(term);
             result.Should().BeEmpty();
-            
+
             ExceptionVerification.IgnoreWarns();
         }
     }

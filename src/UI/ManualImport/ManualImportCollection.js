@@ -36,12 +36,12 @@ var Collection = PageableCollection.extend({
     },
 
     sortMappings : {
-        series : {
+        movie : {
             sortValue : function(model, attr, order) {
-                var series = model.get(attr);
+                var movie = model.get(attr);
 
-                if (series) {
-                    return series.sortTitle;
+                if (movie) {
+                    return movie.sortTitle;
                 }
 
                 return '';

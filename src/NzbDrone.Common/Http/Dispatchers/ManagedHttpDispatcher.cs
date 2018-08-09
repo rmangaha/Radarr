@@ -30,7 +30,7 @@ namespace NzbDrone.Common.Http.Dispatchers
             webRequest.Method = request.Method.ToString();
             webRequest.UserAgent = request.UseSimplifiedUserAgent ? UserAgentBuilder.UserAgentSimplified : UserAgentBuilder.UserAgent;
             webRequest.KeepAlive = request.ConnectionKeepAlive;
-            webRequest.AllowAutoRedirect = request.AllowAutoRedirect;
+            webRequest.AllowAutoRedirect = false;
             webRequest.CookieContainer = cookies;
 
             if (request.RequestTimeout != TimeSpan.Zero)
@@ -136,7 +136,7 @@ namespace NzbDrone.Common.Http.Dispatchers
                         webRequest.TransferEncoding = header.Value;
                         break;
                     case "User-Agent":
-                        throw new NotSupportedException("User-Agent other than Sonarr not allowed.");
+                        throw new NotSupportedException("User-Agent other than Radarr not allowed.");
                     case "Proxy-Connection":
                         throw new NotImplementedException();
                     default:

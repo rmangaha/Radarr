@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 
 namespace NzbDrone.Core.Extras.Subtitles
 {
@@ -8,7 +9,7 @@ namespace NzbDrone.Core.Extras.Subtitles
 
         static SubtitleFileExtensions()
         {
-            _fileExtensions = new HashSet<string>
+            _fileExtensions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
                               {
                                   ".aqt",
                                   ".ass",
@@ -23,13 +24,11 @@ namespace NzbDrone.Core.Extras.Subtitles
                                   ".txt",
                                   ".utf",
                                   ".utf8",
-                                  ".utf-8"
+                                  ".utf-8",
+                                  ".vtt"
                               };
         }
 
-        public static HashSet<string> Extensions
-        {
-            get { return _fileExtensions; }
-        }
+        public static HashSet<string> Extensions => _fileExtensions;
     }
 }

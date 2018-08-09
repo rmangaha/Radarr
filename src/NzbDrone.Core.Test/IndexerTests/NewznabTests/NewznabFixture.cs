@@ -6,7 +6,6 @@ using NUnit.Framework;
 using NzbDrone.Common.Http;
 using NzbDrone.Core.Indexers;
 using NzbDrone.Core.Indexers.Newznab;
-using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.Test.Framework;
 
 namespace NzbDrone.Core.Test.IndexerTests.NewznabTests
@@ -25,7 +24,7 @@ namespace NzbDrone.Core.Test.IndexerTests.NewznabTests
                     Name = "Newznab",
                     Settings = new NewznabSettings()
                         {
-                            Url = "http://indexer.local/",
+                            BaseUrl = "http://indexer.local/",
                             Categories = new int[] { 1 }
                         }
                 };

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 using System.Collections.Generic;
 using System.Threading;
@@ -15,6 +15,7 @@ using NzbDrone.Core.Exceptions;
 using NzbDrone.Core.Parser.Model;
 using NzbDrone.Core.RemotePathMappings;
 using NzbDrone.Core.ThingiProvider;
+using NzbDrone.Core.Organizer;
 
 namespace NzbDrone.Core.Download.Clients.RTorrent
 {
@@ -27,88 +28,58 @@ namespace NzbDrone.Core.Download.Clients.RTorrent
                         ITorrentFileInfoReader torrentFileInfoReader,
                         IHttpClient httpClient,
                         IConfigService configService,
+                        INamingConfigService namingConfigService,
                         IDiskProvider diskProvider,
                         IRemotePathMappingService remotePathMappingService,
                         IRTorrentDirectoryValidator rTorrentDirectoryValidator,
                         Logger logger)
-            : base(torrentFileInfoReader, httpClient, configService, diskProvider, remotePathMappingService, logger)
+            : base(torrentFileInfoReader, httpClient, configService, namingConfigService, diskProvider, remotePathMappingService, logger)
         {
             _proxy = proxy;
             _rTorrentDirectoryValidator = rTorrentDirectoryValidator;
         }
 
-        protected override string AddFromMagnetLink(RemoteEpisode remoteEpisode, string hash, string magnetLink)
+        protected override string AddFromMagnetLink(RemoteMovie remoteMovie, string hash, string magnetLink)
         {
-            _proxy.AddTorrentFromUrl(magnetLink, Settings);
+            var priority = (RTorrentPriority)(remoteMovie.Movie.IsRecentMovie ? Settings.RecentMoviePriority : Settings.OlderMoviePriority);
 
-            // Download the magnet to the appropriate directory.
-            _proxy.SetTorrentLabel(hash, Settings.TvCategory, Settings);
-            SetPriority(remoteEpisode, hash);
-            SetDownloadDirectory(hash);
+            _proxy.AddTorrentFromUrl(magnetLink, Settings.MovieCategory, priority, Settings.MovieDirectory, Settings);
 
-            // Once the magnet meta download finishes, rTorrent replaces it with the actual torrent download with default settings.
-            // Schedule an event to apply the appropriate settings when that happens.
-            var priority = (RTorrentPriority)(remoteEpisode.IsRecentEpisode() ? Settings.RecentTvPriority : Settings.OlderTvPriority);
-            _proxy.SetDeferredMagnetProperties(hash, Settings.TvCategory, Settings.TvDirectory, priority, Settings);
-
-            _proxy.StartTorrent(hash, Settings);
-
-            // Wait for the magnet to be resolved.
             var tries = 10;
             var retryDelay = 500;
-            if (WaitForTorrent(hash, tries, retryDelay))
-            {
-                return hash;
-            }
-            else
+
+            // Wait a bit for the magnet to be resolved.
+            if (!WaitForTorrent(hash, tries, retryDelay))
             {
                 _logger.Warn("rTorrent could not resolve magnet within {0} seconds, download may remain stuck: {1}.", tries * retryDelay / 1000, magnetLink);
 
                 return hash;
             }
+
+            return hash;
         }
 
-        protected override string AddFromTorrentFile(RemoteEpisode remoteEpisode, string hash, string filename, byte[] fileContent)
+        protected override string AddFromTorrentFile(RemoteMovie remoteMovie, string hash, string filename, byte[] fileContent)
         {
-            _proxy.AddTorrentFromFile(filename, fileContent, Settings);
+            var priority = (RTorrentPriority)(remoteMovie.Movie.IsRecentMovie ? Settings.RecentMoviePriority : Settings.OlderMoviePriority);
 
-            var tries = 2;
-            var retryDelay = 100;
-            if (WaitForTorrent(hash, tries, retryDelay))
+            _proxy.AddTorrentFromFile(filename, fileContent, Settings.MovieCategory, priority, Settings.MovieDirectory, Settings);
+
+            var tries = 10;
+            var retryDelay = 500;
+            if (!WaitForTorrent(hash, tries, retryDelay))
             {
-                _proxy.SetTorrentLabel(hash, Settings.TvCategory, Settings);
+                _logger.Debug("rTorrent didn't add the torrent within {0} seconds: {1}.", tries * retryDelay / 1000, filename);
 
-                SetPriority(remoteEpisode, hash);
-                SetDownloadDirectory(hash);
-
-                _proxy.StartTorrent(hash, Settings);
-
-                return hash;
+                throw new ReleaseDownloadException(remoteMovie.Release, "Downloading torrent failed");
             }
-            else
-            {
-                _logger.Debug("rTorrent could not add file");
 
-                RemoveItem(hash, true);
-                throw new ReleaseDownloadException(remoteEpisode.Release, "Downloading torrent failed");
-            }
+            return hash;
         }
 
-        public override string Name
-        {
-            get
-            {
-                return "rTorrent";
-            }
-        }
+        public override string Name => "rTorrent";
 
-        public override ProviderMessage Message
-        {
-            get
-            {
-                return new ProviderMessage("Sonarr is unable to remove torrents that have finished seeding when using rTorrent", ProviderMessageType.Warning);
-            }
-        }
+        public override ProviderMessage Message => new ProviderMessage("Radarr is unable to remove torrents that have finished seeding when using rTorrent", ProviderMessageType.Warning);
 
         public override IEnumerable<DownloadClientItem> GetItems()
         {
@@ -122,7 +93,7 @@ namespace NzbDrone.Core.Download.Clients.RTorrent
                 foreach (RTorrentTorrent torrent in torrents)
                 {
                     // Don't concern ourselves with categories other than specified
-                    if (torrent.Category != Settings.TvCategory) continue;
+                    if (torrent.Category != Settings.MovieCategory) continue;
 
                     if (torrent.Path.StartsWith("."))
                     {
@@ -150,7 +121,7 @@ namespace NzbDrone.Core.Download.Clients.RTorrent
                     else if (!torrent.IsActive) item.Status = DownloadItemStatus.Paused;
 
                     // No stop ratio data is present, so do not delete
-                    item.IsReadOnly = true;
+                    item.CanMoveFiles = item.CanBeRemoved = false;
 
                     items.Add(item);
                 }
@@ -240,20 +211,6 @@ namespace NzbDrone.Core.Download.Clients.RTorrent
             }
 
             return result.Errors.First();
-        }
-
-        private void SetPriority(RemoteEpisode remoteEpisode, string hash)
-        {
-            var priority = (RTorrentPriority)(remoteEpisode.IsRecentEpisode() ? Settings.RecentTvPriority : Settings.OlderTvPriority);
-            _proxy.SetTorrentPriority(hash, priority, Settings);
-        }
-
-        private void SetDownloadDirectory(string hash)
-        {
-            if (Settings.TvDirectory.IsNotNullOrWhiteSpace())
-            {
-                _proxy.SetTorrentDownloadDirectory(hash, Settings.TvDirectory, Settings);
-            }
         }
 
         private bool WaitForTorrent(string hash, int tries, int retryDelay)

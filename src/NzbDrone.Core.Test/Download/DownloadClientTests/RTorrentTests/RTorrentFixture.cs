@@ -1,14 +1,11 @@
-using System;
 using System.Linq;
 using System.Collections.Generic;
 using FluentAssertions;
 using Moq;
 using NUnit.Framework;
-using NzbDrone.Common.Http;
 using NzbDrone.Core.MediaFiles.TorrentInfo;
 using NzbDrone.Core.Download;
 using NzbDrone.Core.Download.Clients.RTorrent;
-using NzbDrone.Test.Common;
 
 namespace NzbDrone.Core.Test.Download.DownloadClientTests.RTorrentTests
 {
@@ -24,30 +21,30 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.RTorrentTests
             Subject.Definition = new DownloadClientDefinition();
             Subject.Definition.Settings = new RTorrentSettings()
             {
-                TvCategory = null
+                MovieCategory = null
             };
 
             _downloading = new RTorrentTorrent
-                    {
-                        Hash = "HASH",
-                        IsFinished = false,
-                        IsOpen = true,
-                        IsActive = true,
-                        Name = _title,
-                        TotalSize = 1000,
-                        RemainingSize = 500,
-                        Path = "somepath"
-                    };
+            {
+                Hash = "HASH",
+                IsFinished = false,
+                IsOpen = true,
+                IsActive = true,
+                Name = _title,
+                TotalSize = 1000,
+                RemainingSize = 500,
+                Path = "somepath"
+            };
 
             _completed = new RTorrentTorrent
-                    {
-                        Hash = "HASH",
-                        IsFinished = true,
-                        Name = _title,
-                        TotalSize = 1000,
-                        RemainingSize = 0,
-                        Path = "somepath"
-                    };
+            {
+                Hash = "HASH",
+                IsFinished = true,
+                Name = _title,
+                TotalSize = 1000,
+                RemainingSize = 0,
+                Path = "somepath"
+            };
 
             Mocker.GetMock<ITorrentFileInfoReader>()
                   .Setup(s => s.GetHashFromTorrentFile(It.IsAny<byte[]>()))
@@ -57,11 +54,11 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.RTorrentTests
         protected void GivenSuccessfulDownload()
         {
             Mocker.GetMock<IRTorrentProxy>()
-                  .Setup(s => s.AddTorrentFromUrl(It.IsAny<string>(), It.IsAny<RTorrentSettings>()))
+                  .Setup(s => s.AddTorrentFromUrl(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<RTorrentPriority>(), It.IsAny<string>(), It.IsAny<RTorrentSettings>()))
                   .Callback(PrepareClientToReturnCompletedItem);
 
             Mocker.GetMock<IRTorrentProxy>()
-                  .Setup(s => s.AddTorrentFromFile(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<RTorrentSettings>()))
+                  .Setup(s => s.AddTorrentFromFile(It.IsAny<string>(), It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<RTorrentPriority>(), It.IsAny<string>(), It.IsAny<RTorrentSettings>()))
                   .Callback(PrepareClientToReturnCompletedItem);
 
 
@@ -119,7 +116,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.RTorrentTests
         {
             GivenSuccessfulDownload();
 
-            var remoteEpisode = CreateRemoteEpisode();
+            var remoteEpisode = CreateRemoteMovie();
 
             var id = Subject.Download(remoteEpisode);
 

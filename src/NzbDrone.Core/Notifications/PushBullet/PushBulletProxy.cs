@@ -6,6 +6,7 @@ using NLog;
 using RestSharp;
 using NzbDrone.Core.Rest;
 using NzbDrone.Common.Extensions;
+using RestSharp.Authenticators;
 
 namespace NzbDrone.Core.Notifications.PushBullet
 {
@@ -91,8 +92,8 @@ namespace NzbDrone.Core.Notifications.PushBullet
         {
             try
             {
-                const string title = "Sonarr - Test Notification";
-                const string body = "This is a test message from Sonarr";
+                const string title = "Radarr - Test Notification";
+                const string body = "This is a test message from Radarr";
 
                 SendNotification(title, body, settings);
             }

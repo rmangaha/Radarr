@@ -1,6 +1,6 @@
+using System;
 using System.IO;
 using System.Text.RegularExpressions;
-using Nancy;
 using NLog;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.EnvironmentInfo;
@@ -43,7 +43,7 @@ namespace NzbDrone.Api.Frontend.Mappers
 
         public override bool CanHandle(string resourceUrl)
         {
-            return resourceUrl.StartsWith("/MediaCover");
+            return resourceUrl.StartsWith("/MediaCover", StringComparison.InvariantCultureIgnoreCase);
         }
     }
 }

@@ -15,10 +15,10 @@ module.exports = Paginator.extend({
     windowSize : 1,
 
     fastForwardHandleLabels : {
-        first : 'icon-sonarr-pager-first',
-        prev  : 'icon-sonarr-pager-previous',
-        next  : 'icon-sonarr-pager-next',
-        last  : 'icon-sonarr-pager-last'
+        first : 'icon-radarr-pager-first',
+        prev  : 'icon-radarr-pager-previous',
+        next  : 'icon-radarr-pager-next',
+        last  : 'icon-radarr-pager-last'
     },
 
     changePage : function(e) {
@@ -35,7 +35,7 @@ module.exports = Paginator.extend({
         var iconClass = $.trim(iconClasses[0]);
 
         icon.removeClass(iconClass);
-        icon.addClass('icon-sonarr-spinner fa-spin');
+        icon.addClass('icon-radarr-spinner fa-spin');
 
         var label = target.attr('data-action');
         var ffLabels = this.fastForwardHandleLabels;
@@ -72,6 +72,8 @@ module.exports = Paginator.extend({
         var handles = [];
 
         var collection = this.collection;
+
+        
         var state = collection.state;
 
         // convert all indices to 0-based here
@@ -83,7 +85,7 @@ module.exports = Paginator.extend({
         var windowStart = Math.floor(currentPage / this.windowSize) * this.windowSize;
         var windowEnd = Math.min(lastPage + 1, windowStart + this.windowSize);
 
-        if (collection.mode !== 'infinite') {
+        if (true/*collection.mode !== 'infinite'*/) {
             for (var i = windowStart; i < windowEnd; i++) {
                 handles.push({
                     label      : i + 1,
@@ -182,7 +184,7 @@ module.exports = Paginator.extend({
 
         var selectedPage = parseInt(target.val(), 10);
 
-        this.$el.find('.x-page-number').html('<i class="icon-sonarr-spinner fa-spin"></i>');
+        this.$el.find('.x-page-number').html('<i class="icon-radarr-spinner fa-spin"></i>');
         this.collection.getPage(selectedPage);
     }
 });

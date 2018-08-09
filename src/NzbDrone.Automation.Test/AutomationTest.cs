@@ -28,7 +28,7 @@ namespace NzbDrone.Automation.Test
             LogManager.Configuration = new LoggingConfiguration();
             var consoleTarget = new ConsoleTarget { Layout = "${level}: ${message} ${exception}" };
             LogManager.Configuration.AddTarget(consoleTarget.GetType().Name, consoleTarget);
-            LogManager.Configuration.LoggingRules.Add(new LoggingRule("*", LogLevel.Trace, consoleTarget));
+            LogManager.Configuration.LoggingRules.Add(new LoggingRule("*", NLog.LogLevel.Trace, consoleTarget));
         }
 
         [TestFixtureSetUp]
@@ -40,7 +40,7 @@ namespace NzbDrone.Automation.Test
             _runner.KillAll();
             _runner.Start();
 
-            driver.Url = "http://localhost:8989";
+            driver.Url = "http://localhost:7878";
 
             var page = new PageBase(driver);
             page.WaitForNoSpinner();

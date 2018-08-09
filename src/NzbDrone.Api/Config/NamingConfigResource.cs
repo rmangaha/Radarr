@@ -1,4 +1,3 @@
-﻿using System;
 using NzbDrone.Api.REST;
 using NzbDrone.Core.Organizer;
 
@@ -8,12 +7,10 @@ namespace NzbDrone.Api.Config
     {
         public bool RenameEpisodes { get; set; }
         public bool ReplaceIllegalCharacters { get; set; }
+        public ColonReplacementFormat ColonReplacementFormat { get; set; }
+        public string StandardMovieFormat { get; set; }
+        public string MovieFolderFormat { get; set; }
         public int MultiEpisodeStyle { get; set; }
-        public string StandardEpisodeFormat { get; set; }
-        public string DailyEpisodeFormat { get; set; }
-        public string AnimeEpisodeFormat { get; set; }
-        public string SeriesFolderFormat { get; set; }
-        public string SeasonFolderFormat { get; set; }
         public bool IncludeSeriesTitle { get; set; }
         public bool IncludeEpisodeTitle { get; set; }
         public bool IncludeQuality { get; set; }
@@ -32,12 +29,10 @@ namespace NzbDrone.Api.Config
 
                 RenameEpisodes = model.RenameEpisodes,
                 ReplaceIllegalCharacters = model.ReplaceIllegalCharacters,
+                ColonReplacementFormat = model.ColonReplacementFormat,
                 MultiEpisodeStyle = model.MultiEpisodeStyle,
-                StandardEpisodeFormat = model.StandardEpisodeFormat,
-                DailyEpisodeFormat = model.DailyEpisodeFormat,
-                AnimeEpisodeFormat = model.AnimeEpisodeFormat,
-                SeriesFolderFormat = model.SeriesFolderFormat,
-                SeasonFolderFormat = model.SeasonFolderFormat
+                StandardMovieFormat = model.StandardMovieFormat,
+                MovieFolderFormat = model.MovieFolderFormat
                 //IncludeSeriesTitle
                 //IncludeEpisodeTitle
                 //IncludeQuality
@@ -65,12 +60,9 @@ namespace NzbDrone.Api.Config
 
                 RenameEpisodes = resource.RenameEpisodes,
                 ReplaceIllegalCharacters = resource.ReplaceIllegalCharacters,
-                MultiEpisodeStyle = resource.MultiEpisodeStyle,
-                StandardEpisodeFormat = resource.StandardEpisodeFormat,
-                DailyEpisodeFormat = resource.DailyEpisodeFormat,
-                AnimeEpisodeFormat = resource.AnimeEpisodeFormat,
-                SeriesFolderFormat = resource.SeriesFolderFormat,
-                SeasonFolderFormat = resource.SeasonFolderFormat
+                ColonReplacementFormat = resource.ColonReplacementFormat,
+                StandardMovieFormat = resource.StandardMovieFormat,
+                MovieFolderFormat = resource.MovieFolderFormat
             };
         }
     }

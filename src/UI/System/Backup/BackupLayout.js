@@ -41,11 +41,11 @@ module.exports = Marionette.Layout.extend({
     leftSideButtons : {
         type       : 'default',
         storeState : false,
-        collapse   : false,
+        collapse   : true,
         items      : [
             {
                 title          : 'Backup',
-                icon           : 'icon-sonarr-file-text',
+                icon           : 'icon-radarr-file-text',
                 command        : 'backup',
                 properties     : { type : 'manual' },
                 successMessage : 'Database and settings were backed up successfully',

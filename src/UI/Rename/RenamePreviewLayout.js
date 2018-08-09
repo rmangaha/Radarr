@@ -29,12 +29,11 @@ module.exports = Marionette.Layout.extend({
     },
 
     initialize : function(options) {
-        this.model = options.series;
+        this.model = options.movie;
         this.seasonNumber = options.seasonNumber;
 
         var viewOptions = {};
-        viewOptions.seriesId = this.model.id;
-        viewOptions.seasonNumber = this.seasonNumber;
+        viewOptions.movieId = this.model.id;
 
         this.collection = new RenamePreviewCollection(viewOptions);
         this.listenTo(this.collection, 'sync', this._showPreviews);
@@ -66,7 +65,8 @@ module.exports = Marionette.Layout.extend({
         }
 
         var files = _.map(this.collection.where({ rename : true }), function(model) {
-            return model.get('episodeFileId');
+            //return model.get('episodeFileId');
+            return model.get('movieFileId');
         });
 
         if (files.length === 0) {
@@ -74,32 +74,22 @@ module.exports = Marionette.Layout.extend({
             return;
         }
 
-        if (this.seasonNumber) {
-            CommandController.Execute('renameFiles', {
-                name         : 'renameFiles',
-                seriesId     : this.model.id,
-                seasonNumber : this.seasonNumber,
-                files        : files
-            });
-        } else {
-            CommandController.Execute('renameFiles', {
-                name         : 'renameFiles',
-                seriesId     : this.model.id,
-                seasonNumber : -1,
-                files        : files
-            });
-        }
+        CommandController.Execute('renameMovieFiles', {
+            name         : 'renameMovieFiles',
+            movieId      : this.model.id,
+            files        : files
+        });
 
         vent.trigger(vent.Commands.CloseModalCommand);
     },
 
     _setCheckedState : function(checked) {
         if (checked) {
-            this.ui.checkboxIcon.addClass('icon-sonarr-checked');
-            this.ui.checkboxIcon.removeClass('icon-sonarr-unchecked');
+            this.ui.checkboxIcon.addClass('icon-radarr-checked');
+            this.ui.checkboxIcon.removeClass('icon-radarr-unchecked');
         } else {
-            this.ui.checkboxIcon.addClass('icon-sonarr-unchecked');
-            this.ui.checkboxIcon.removeClass('icon-sonarr-checked');
+            this.ui.checkboxIcon.addClass('icon-radarr-unchecked');
+            this.ui.checkboxIcon.removeClass('icon-radarr-checked');
         }
     },
 

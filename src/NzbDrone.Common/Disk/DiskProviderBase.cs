@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -9,6 +9,7 @@ using NzbDrone.Common.EnsureThat;
 using NzbDrone.Common.EnvironmentInfo;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Instrumentation;
+using System.Drawing;
 
 namespace NzbDrone.Common.Disk
 {
@@ -108,13 +109,48 @@ namespace NzbDrone.Common.Disk
             }
         }
 
+        public bool CanUseGDIPlus()
+        {
+            try
+            {
+                GdiPlusInterop.CheckGdiPlus();
+                return true;
+            }
+            catch (DllNotFoundException ex)
+            {
+                Logger.Trace(ex, "System does not have libgdiplus.");
+                return false;
+            }
+        }
+
+        public bool IsValidGDIPlusImage(string filename)
+        {
+            if (!CanUseGDIPlus())
+            {
+                return true;
+            }
+
+            try
+            {
+                using (var bmp = new Bitmap(filename))
+                {
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Debug(ex, "Corrupted image found at: {0}.", filename);
+                return false;
+            }
+        }
+
         public bool FolderWritable(string path)
         {
             Ensure.That(path, () => path).IsValidPath();
 
             try
             {
-                var testPath = Path.Combine(path, "sonarr_write_test.txt");
+                var testPath = Path.Combine(path, "radarr_write_test.txt");
                 var testContent = string.Format("This file was created to verify if '{0}' is writable. It should've been automatically deleted. Feel free to delete it.", path);
                 File.WriteAllText(testPath, testContent);
                 File.Delete(testPath);
@@ -209,6 +245,25 @@ namespace NzbDrone.Common.Disk
             File.Move(source, destination);
         }
 
+        public void MoveFolder(string source, string destination, bool overwrite = false)
+        {
+            Ensure.That(source, () => source).IsValidPath();
+            Ensure.That(destination, () => destination).IsValidPath();
+
+            if (source.PathEquals(destination))
+            {
+                throw new IOException(string.Format("Source and destination can't be the same {0}", source));
+            }
+
+            if (FolderExists(destination) && overwrite)
+            {
+                DeleteFolder(destination, true);
+            }
+
+            RemoveReadOnlyFolder(source);
+            Directory.Move(source, destination);
+        }
+
         public abstract bool TryCreateHardLink(string source, string destination);
 
         public void DeleteFolder(string path, bool recursive)
@@ -239,12 +294,22 @@ namespace NzbDrone.Common.Disk
         {
             Ensure.That(path, () => path).IsValidPath();
 
+            if (dateTime.Before(DateTimeExtensions.Epoch))
+            {
+                dateTime = DateTimeExtensions.Epoch;
+            }
+
             Directory.SetLastWriteTimeUtc(path, dateTime);
         }
 
         public void FileSetLastWriteTime(string path, DateTime dateTime)
         {
             Ensure.That(path, () => path).IsValidPath();
+            
+            if (dateTime.Before(DateTimeExtensions.Epoch))
+            {
+                dateTime = DateTimeExtensions.Epoch;
+            }
 
             File.SetLastWriteTime(path, dateTime);
         }
@@ -331,6 +396,20 @@ namespace NzbDrone.Common.Disk
                 {
                     var newAttributes = attributes & ~(FileAttributes.ReadOnly);
                     File.SetAttributes(path, newAttributes);
+                }
+            }
+        }
+
+        private static void RemoveReadOnlyFolder(string path)
+        {
+            if (Directory.Exists(path))
+            {
+                var dirInfo = new DirectoryInfo(path);
+
+                if (dirInfo.Attributes.HasFlag(FileAttributes.ReadOnly))
+                {
+                    var newAttributes = dirInfo.Attributes & ~(FileAttributes.ReadOnly);
+                    dirInfo.Attributes = newAttributes;
                 }
             }
         }

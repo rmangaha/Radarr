@@ -1,11 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using NLog;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Common.Serializer;
 using NzbDrone.Core.Notifications.Xbmc.Model;
 using NzbDrone.Core.Rest;
 using RestSharp;
+using RestSharp.Authenticators;
 
 namespace NzbDrone.Core.Notifications.Xbmc
 {
@@ -16,7 +16,7 @@ namespace NzbDrone.Core.Notifications.Xbmc
         string UpdateLibrary(XbmcSettings settings, string path);
         void CleanLibrary(XbmcSettings settings);
         List<ActivePlayer> GetActivePlayers(XbmcSettings settings);
-        List<TvShow> GetSeries(XbmcSettings settings);
+        List<XbmcMovie> GetMovies(XbmcSettings settings);
     }
 
     public class XbmcJsonApiProxy : IXbmcJsonApiProxy
@@ -41,7 +41,7 @@ namespace NzbDrone.Core.Notifications.Xbmc
             var parameters = new Dictionary<string, object>();
             parameters.Add("title", title);
             parameters.Add("message", message);
-            parameters.Add("image", "https://raw.github.com/Sonarr/Sonarr/develop/Logo/64.png");
+            parameters.Add("image", "https://raw.github.com/Radarr/Radarr/develop/Logo/64.png");
             parameters.Add("displaytime", settings.DisplayTime * 1000);
 
             ProcessRequest(request, settings, "GUI.ShowNotification", parameters);
@@ -79,15 +79,15 @@ namespace NzbDrone.Core.Notifications.Xbmc
             return Json.Deserialize<ActivePlayersEdenResult>(response).Result;
         }
 
-        public List<TvShow> GetSeries(XbmcSettings settings)
+        public List<XbmcMovie> GetMovies(XbmcSettings settings)
         {
             var request = new RestRequest();
             var parameters = new Dictionary<string, object>();
             parameters.Add("properties", new[] { "file", "imdbnumber" });
 
-            var response = ProcessRequest(request, settings, "VideoLibrary.GetTvShows", parameters);
+            var response = ProcessRequest(request, settings, "VideoLibrary.GetMovies", parameters);
 
-            return Json.Deserialize<TvShowResponse>(response).Result.TvShows;
+            return Json.Deserialize<MovieResponse>(response).Result.Movies;
         }
 
         private string ProcessRequest(IRestRequest request, XbmcSettings settings, string method, Dictionary<string, object> parameters = null)

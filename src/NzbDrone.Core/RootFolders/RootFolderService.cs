@@ -1,4 +1,4 @@
-﻿using System.Linq;
+using System.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,7 +7,7 @@ using NzbDrone.Common;
 using NzbDrone.Common.Disk;
 using NzbDrone.Common.Extensions;
 using NzbDrone.Core.Configuration;
-using NzbDrone.Core.Tv;
+using NzbDrone.Core.Movies;
 
 namespace NzbDrone.Core.RootFolders
 {
@@ -24,7 +24,7 @@ namespace NzbDrone.Core.RootFolders
     {
         private readonly IRootFolderRepository _rootFolderRepository;
         private readonly IDiskProvider _diskProvider;
-        private readonly ISeriesRepository _seriesRepository;
+        private readonly IMovieRepository _movieRepository;
         private readonly IConfigService _configService;
         private readonly Logger _logger;
 
@@ -37,19 +37,20 @@ namespace NzbDrone.Core.RootFolders
                                                                      ".appledb",
                                                                      ".appledesktop",
                                                                      ".appledouble",
-                                                                     "@eadir"
+                                                                     "@eadir",
+                                                                     ".grab"
                                                                  };
 
 
         public RootFolderService(IRootFolderRepository rootFolderRepository,
                                  IDiskProvider diskProvider,
-                                 ISeriesRepository seriesRepository,
+                                 IMovieRepository movieRepository,
                                  IConfigService configService,
                                  Logger logger)
         {
             _rootFolderRepository = rootFolderRepository;
             _diskProvider = diskProvider;
-            _seriesRepository = seriesRepository;
+            _movieRepository = movieRepository;
             _configService = configService;
             _logger = logger;
         }
@@ -72,14 +73,15 @@ namespace NzbDrone.Core.RootFolders
                     if (folder.Path.IsPathValid() && _diskProvider.FolderExists(folder.Path))
                     {
                         folder.FreeSpace = _diskProvider.GetAvailableSpace(folder.Path);
+                        folder.TotalSpace = _diskProvider.GetTotalSize(folder.Path);
                         folder.UnmappedFolders = GetUnmappedFolders(folder.Path);
                     }
                 }
                 //We don't want an exception to prevent the root folders from loading in the UI, so they can still be deleted
                 catch (Exception ex)
                 {
-                    _logger.Error(ex, "Unable to get free space and unmapped folders for root folder: " + folder.Path);
                     folder.FreeSpace = 0;
+                    _logger.Error(ex, "Unable to get free space and unmapped folders for root folder {0}", folder.Path);
                     folder.UnmappedFolders = new List<UnmappedFolder>();
                 }
             });
@@ -106,7 +108,7 @@ namespace NzbDrone.Core.RootFolders
                 throw new InvalidOperationException("Recent directory already exists.");
             }
 
-            if (_configService.DownloadedEpisodesFolder.IsNotNullOrWhiteSpace() && _configService.DownloadedEpisodesFolder.PathEquals(rootFolder.Path))
+            if (_configService.DownloadedMoviesFolder.IsNotNullOrWhiteSpace() && _configService.DownloadedMoviesFolder.PathEquals(rootFolder.Path))
             {
                 throw new InvalidOperationException("Drone Factory folder cannot be used.");
             }
@@ -132,10 +134,12 @@ namespace NzbDrone.Core.RootFolders
         {
             _logger.Debug("Generating list of unmapped folders");
             if (string.IsNullOrEmpty(path))
+            {
                 throw new ArgumentException("Invalid path provided", "path");
+            }
 
             var results = new List<UnmappedFolder>();
-            var series = _seriesRepository.All().ToList();
+            var movies = _movieRepository.All().ToList();
 
             if (!_diskProvider.FolderExists(path))
             {
@@ -143,13 +147,20 @@ namespace NzbDrone.Core.RootFolders
                 return results;
             }
 
-            var seriesFolders = _diskProvider.GetDirectories(path).ToList();
-            var unmappedFolders = seriesFolders.Except(series.Select(s => s.Path), PathEqualityComparer.Instance).ToList();
+            //var movieFolders = _diskProvider.GetDirectories(path).ToList();
+            //var unmappedFolders = movieFolders.Except(movies.Select(s => s.Path), PathEqualityComparer.Instance).ToList();
+
+            var possibleMovieFolders = _diskProvider.GetDirectories(path).ToList();
+            var unmappedFolders = possibleMovieFolders.Except(movies.Select(s => s.Path), PathEqualityComparer.Instance).ToList();
 
             foreach (string unmappedFolder in unmappedFolders)
             {
                 var di = new DirectoryInfo(unmappedFolder.Normalize());
-                results.Add(new UnmappedFolder { Name = di.Name, Path = di.FullName });
+				if ((!di.Attributes.HasFlag(FileAttributes.System) && !di.Attributes.HasFlag(FileAttributes.Hidden)) || di.Attributes.ToString() == "-1")
+                {
+                    results.Add(new UnmappedFolder { Name = di.Name, Path = di.FullName });
+                }
+
             }
 
             var setToRemove = SpecialFolders;
@@ -163,6 +174,7 @@ namespace NzbDrone.Core.RootFolders
         {
             var rootFolder = _rootFolderRepository.Get(id);
             rootFolder.FreeSpace = _diskProvider.GetAvailableSpace(rootFolder.Path);
+            rootFolder.TotalSpace = _diskProvider.GetTotalSize(rootFolder.Path);
             rootFolder.UnmappedFolders = GetUnmappedFolders(rootFolder.Path);
             return rootFolder;
         }

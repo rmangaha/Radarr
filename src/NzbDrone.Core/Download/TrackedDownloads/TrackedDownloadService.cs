@@ -1,11 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NLog;
 using NzbDrone.Common.Cache;
 using NzbDrone.Common.Extensions;
+using NzbDrone.Core.Configuration;
 using NzbDrone.Core.History;
 using NzbDrone.Core.Parser;
-using NzbDrone.Core.Parser.Model;
 
 namespace NzbDrone.Core.Download.TrackedDownloads
 {
@@ -19,17 +20,20 @@ namespace NzbDrone.Core.Download.TrackedDownloads
     {
         private readonly IParsingService _parsingService;
         private readonly IHistoryService _historyService;
+        private readonly IConfigService _config;
         private readonly Logger _logger;
         private readonly ICached<TrackedDownload> _cache;
 
         public TrackedDownloadService(IParsingService parsingService,
             ICacheManager cacheManager,
             IHistoryService historyService,
+            IConfigService config,
             Logger logger)
         {
             _parsingService = parsingService;
             _historyService = historyService;
             _cache = cacheManager.GetCache<TrackedDownload>(GetType());
+            _config = config;
             _logger = logger;
         }
 
@@ -57,43 +61,43 @@ namespace NzbDrone.Core.Download.TrackedDownloads
 
             try
             {
-                var parsedEpisodeInfo = Parser.Parser.ParseTitle(trackedDownload.DownloadItem.Title);
-                var historyItems = _historyService.FindByDownloadId(downloadItem.DownloadId);
 
-                if (parsedEpisodeInfo != null)
+                var historyItems = _historyService.FindByDownloadId(downloadItem.DownloadId);
+                var grabbedHistoryItem = historyItems.OrderByDescending(h => h.Date).FirstOrDefault(h => h.EventType == HistoryEventType.Grabbed);
+                var firstHistoryItem = historyItems.OrderByDescending(h => h.Date).FirstOrDefault();
+                //TODO: Create release info from history and use that here, so we don't loose indexer flags!
+                var parsedMovieInfo = _parsingService.ParseMovieInfo(trackedDownload.DownloadItem.Title, new List<object>{grabbedHistoryItem});
+
+                if (parsedMovieInfo != null)
                 {
-                    trackedDownload.RemoteEpisode = _parsingService.Map(parsedEpisodeInfo, 0, 0);
+                    trackedDownload.RemoteMovie = _parsingService.Map(parsedMovieInfo, "", null).RemoteMovie;
                 }
 
-                if (historyItems.Any())
+                if (firstHistoryItem != null)
                 {
-                    var firstHistoryItem = historyItems.OrderByDescending(h => h.Date).First();
                     trackedDownload.State = GetStateFromHistory(firstHistoryItem.EventType);
 
-                    if (parsedEpisodeInfo == null ||
-                        trackedDownload.RemoteEpisode == null ||
-                        trackedDownload.RemoteEpisode.Series == null ||
-                        trackedDownload.RemoteEpisode.Episodes.Empty())
+                    if (parsedMovieInfo == null ||
+                        trackedDownload.RemoteMovie == null ||
+                        trackedDownload.RemoteMovie.Movie == null)
                     {
-                        // Try parsing the original source title and if that fails, try parsing it as a special
-                        // TODO: Pass the TVDB ID and TVRage IDs in as well so we have a better chance for finding the item
-                        parsedEpisodeInfo = Parser.Parser.ParseTitle(firstHistoryItem.SourceTitle) ?? _parsingService.ParseSpecialEpisodeTitle(firstHistoryItem.SourceTitle, 0, 0);
+                        parsedMovieInfo = _parsingService.ParseMovieInfo(firstHistoryItem.SourceTitle, new List<object>{grabbedHistoryItem});
 
-                        if (parsedEpisodeInfo != null)
+                        if (parsedMovieInfo != null)
                         {
-                            trackedDownload.RemoteEpisode = _parsingService.Map(parsedEpisodeInfo, firstHistoryItem.SeriesId, historyItems.Where(v => v.EventType == HistoryEventType.Grabbed).Select(h => h.EpisodeId).Distinct());
+                            trackedDownload.RemoteMovie = _parsingService.Map(parsedMovieInfo, "", null).RemoteMovie;
                         }
                     }
                 }
 
-                if (trackedDownload.RemoteEpisode == null)
+                if (trackedDownload.RemoteMovie == null)
                 {
                     return null;
                 }
             }
             catch (Exception e)
             {
-                _logger.Debug(e, "Failed to find episode for " + downloadItem.Title);
+                _logger.Debug(e, "Failed to find movie for " + downloadItem.Title);
                 return null;
             }
 

@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace NzbDrone.Core.Parser
+﻿﻿namespace NzbDrone.Core.Parser
 {
     public static class SceneChecker
     {
@@ -11,12 +9,12 @@ namespace NzbDrone.Core.Parser
             if (!title.Contains(".")) return false;
             if (title.Contains(" ")) return false;
 
-            var parsedTitle = Parser.ParseTitle(title);
+            var parsedTitle = Parser.ParseMovieTitle(title, false); //We are not lenient when it comes to scene checking!
 
             if (parsedTitle == null ||
                 parsedTitle.ReleaseGroup == null ||
                 parsedTitle.Quality.Quality == Qualities.Quality.Unknown ||
-                string.IsNullOrWhiteSpace(parsedTitle.SeriesTitle))
+                string.IsNullOrWhiteSpace(parsedTitle.MovieTitle))
             {
                 return false;
             }

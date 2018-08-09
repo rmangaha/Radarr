@@ -25,7 +25,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
                                               Port = 2222,
                                               Username = "admin",
                                               Password = "pass",
-                                              TvCategory = "tv"
+                                              MovieCategory = "movies-radarr"
                                           };
 
             Mocker.GetMock<ITorrentFileInfoReader>()
@@ -54,7 +54,7 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
         protected void GivenRedirectToTorrent()
         {
             var httpHeader = new HttpHeader();
-            httpHeader["Location"] = "http://test.sonarr.tv/not-a-real-torrent.torrent";
+            httpHeader["Location"] = "http://test.radarr.video/not-a-real-torrent.torrent";
 
             Mocker.GetMock<IHttpClient>()
                   .Setup(s => s.Get(It.Is<HttpRequest>(h => h.Url.FullUri == _downloadUrl)))
@@ -87,6 +87,12 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
                     };
                     GivenTorrents(new List<QBittorrentTorrent> { torrent });
                 });
+        }
+
+        protected void GivenHighPriority()
+        {
+            Subject.Definition.Settings.As<QBittorrentSettings>().OlderMoviePriority = (int) QBittorrentPriority.First;
+            Subject.Definition.Settings.As<QBittorrentSettings>().RecentMoviePriority = (int) QBittorrentPriority.First;
         }
 
         protected void GivenMaxRatio(float maxRatio, bool removeOnMaxRatio = true)
@@ -245,9 +251,9 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
         {
             GivenSuccessfulDownload();
 
-            var remoteEpisode = CreateRemoteEpisode();
+            var remoteMovie = CreateRemoteMovie();
 
-            var id = Subject.Download(remoteEpisode);
+            var id = Subject.Download(remoteMovie);
 
             id.Should().NotBeNullOrEmpty();
         }
@@ -257,12 +263,45 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
         {
             GivenSuccessfulDownload();
 
-            var remoteEpisode = CreateRemoteEpisode();
-            remoteEpisode.Release.DownloadUrl = magnetUrl;
+            var remoteMovie = CreateRemoteMovie();
+            remoteMovie.Release.DownloadUrl = magnetUrl;
 
-            var id = Subject.Download(remoteEpisode);
+            var id = Subject.Download(remoteMovie);
 
             id.Should().Be(expectedHash);
+        }
+
+        [Test]
+        public void Download_should_set_top_priority()
+        {
+            GivenHighPriority();
+            GivenSuccessfulDownload();
+
+            var remoteMovie = CreateRemoteMovie();
+
+            var id = Subject.Download(remoteMovie);
+
+            Mocker.GetMock<IQBittorrentProxy>()
+                  .Verify(v => v.MoveTorrentToTopInQueue(It.IsAny<string>(), It.IsAny<QBittorrentSettings>()), Times.Once());
+        }
+
+        [Test]
+        public void Download_should_not_fail_if_top_priority_not_available()
+        {
+            GivenHighPriority();
+            GivenSuccessfulDownload();
+
+            Mocker.GetMock<IQBittorrentProxy>()
+                  .Setup(v => v.MoveTorrentToTopInQueue(It.IsAny<string>(), It.IsAny<QBittorrentSettings>()))
+                  .Throws(new HttpException(new HttpResponse(new HttpRequest("http://me.local/"), new HttpHeader(), new byte[0], System.Net.HttpStatusCode.Forbidden)));
+
+            var remoteMovie = CreateRemoteMovie();
+
+            var id = Subject.Download(remoteMovie);
+
+            id.Should().NotBeNullOrEmpty();
+
+            ExceptionVerification.ExpectedWarns(1);
         }
 
         [Test]
@@ -290,9 +329,9 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
             GivenRedirectToMagnet();
             GivenSuccessfulDownload();
 
-            var remoteEpisode = CreateRemoteEpisode();
+            var remoteMovie = CreateRemoteMovie();
 
-            var id = Subject.Download(remoteEpisode);
+            var id = Subject.Download(remoteMovie);
 
             id.Should().NotBeNullOrEmpty();
         }
@@ -303,15 +342,15 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
             GivenRedirectToTorrent();
             GivenSuccessfulDownload();
 
-            var remoteEpisode = CreateRemoteEpisode();
+            var remoteMovie = CreateRemoteMovie();
 
-            var id = Subject.Download(remoteEpisode);
+            var id = Subject.Download(remoteMovie);
 
             id.Should().NotBeNullOrEmpty();
         }
 
         [Test]
-        public void should_be_read_only_if_max_ratio_not_reached()
+        public void should_not_be_removable_and_should_not_allow_move_files_if_max_ratio_not_reached()
         {
             GivenMaxRatio(1.0f);
 
@@ -330,11 +369,12 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
             GivenTorrents(new List<QBittorrentTorrent> { torrent });
 
             var item = Subject.GetItems().Single();
-            item.IsReadOnly.Should().BeTrue();
+            item.CanBeRemoved.Should().BeFalse();
+            item.CanMoveFiles.Should().BeFalse();
         }
 
         [Test]
-        public void should_be_read_only_if_max_ratio_reached_and_not_paused()
+        public void should_not_be_removable_and_should_not_allow_move_files_if_max_ratio_reached_and_not_paused()
         {
             GivenMaxRatio(1.0f);
 
@@ -353,11 +393,12 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
             GivenTorrents(new List<QBittorrentTorrent> { torrent });
 
             var item = Subject.GetItems().Single();
-            item.IsReadOnly.Should().BeTrue();
+            item.CanBeRemoved.Should().BeFalse();
+            item.CanMoveFiles.Should().BeFalse();
         }
 
         [Test]
-        public void should_be_read_only_if_max_ratio_is_not_set()
+        public void should_not_be_removable_and_should_not_allow_move_files_if_max_ratio_is_not_set()
         {
             GivenMaxRatio(1.0f, false);
 
@@ -376,11 +417,12 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
             GivenTorrents(new List<QBittorrentTorrent> { torrent });
 
             var item = Subject.GetItems().Single();
-            item.IsReadOnly.Should().BeTrue();
+            item.CanBeRemoved.Should().BeFalse();
+            item.CanMoveFiles.Should().BeFalse();
         }
 
         [Test]
-        public void should_not_be_read_only_if_max_ratio_reached_and_paused()
+        public void should_be_removable_and_should_allow_move_files_if_max_ratio_reached_and_paused()
         {
             GivenMaxRatio(1.0f);
 
@@ -399,7 +441,58 @@ namespace NzbDrone.Core.Test.Download.DownloadClientTests.QBittorrentTests
             GivenTorrents(new List<QBittorrentTorrent> { torrent });
 
             var item = Subject.GetItems().Single();
-            item.IsReadOnly.Should().BeFalse();
+            item.CanBeRemoved.Should().BeTrue();
+            item.CanMoveFiles.Should().BeTrue();
+        }
+
+        [Test]
+        public void should_get_category_from_the_category_if_set()
+        {
+            const string category = "movies-radarr";
+            GivenMaxRatio(1.0f);
+
+            var torrent = new QBittorrentTorrent
+            {
+                Hash = "HASH",
+                Name = _title,
+                Size = 1000,
+                Progress = 1.0,
+                Eta = 8640000,
+                State = "pausedUP",
+                Category = category,
+                SavePath = "",
+                Ratio = 1.0f
+            };
+
+            GivenTorrents(new List<QBittorrentTorrent> { torrent });
+
+            var item = Subject.GetItems().Single();
+            item.Category.Should().Be(category);
+        }
+
+        [Test]
+        public void should_get_category_from_the_label_if_the_category_is_not_available()
+        {
+            const string category = "movies-radarr";
+            GivenMaxRatio(1.0f);
+
+            var torrent = new QBittorrentTorrent
+            {
+                Hash = "HASH",
+                Name = _title,
+                Size = 1000,
+                Progress = 1.0,
+                Eta = 8640000,
+                State = "pausedUP",
+                Label = category,
+                SavePath = "",
+                Ratio = 1.0f
+            };
+
+            GivenTorrents(new List<QBittorrentTorrent> { torrent });
+
+            var item = Subject.GetItems().Single();
+            item.Category.Should().Be(category);
         }
     }
 }
